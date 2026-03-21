@@ -1,0 +1,88 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Virtual Sequential Logic Simulator API",
+    "version": "1.0.0",
+    "description": "API for simulating sequential logic circuits like Shift Registers and Counters."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api",
+      "description": "Development Server"
+    }
+  ],
+  "paths": {
+    "/simulations": {
+      "post": {
+        "summary": "Create a new simulation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "circuitType": { "type": "string", "example": "SHIFT_REGISTER" },
+                  "numFlipFlops": { "type": "integer", "example": 4 },
+                  "clockFrequency": { "type": "number", "example": 1.0 },
+                  "inputSequence": { "type": "array", "items": { "type": "integer" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Simulation created" }
+        }
+      }
+    },
+    "/simulations/{id}/step": {
+      "post": {
+        "summary": "Execute a single clock cycle",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "input": { "type": "integer", "example": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Simulation state after step" }
+        }
+      }
+    },
+    "/simulations/{id}/run": {
+      "post": {
+        "summary": "Run batch simulation",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cycles": { "type": "integer", "example": 10 },
+                  "inputs": { "type": "array", "items": { "type": "integer" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Simulation state after batch run" }
+        }
+      }
+    }
+  }
+}

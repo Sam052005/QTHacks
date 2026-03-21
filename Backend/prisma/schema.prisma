@@ -1,0 +1,61 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Simulation {
+  id             String   @id @default(uuid())
+  circuitType    String
+  numFlipFlops   Int
+  clockFrequency Float?   @default(1.0)
+  inputSequence  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  states         FlipFlopState[]
+  timingData     TimingPoint[]
+}
+
+model FlipFlopState {
+  id               String     @id @default(uuid())
+  simulationId     String
+  simulation       Simulation @relation(fields: [simulationId], references: [id])
+  type             String
+  q                Int
+  qNot             Int
+  nextState        Int?
+  propagationDelay Float?
+}
+
+model TimingPoint {
+  id           String     @id @default(uuid())
+  simulationId String
+  simulation   Simulation @relation(fields: [simulationId], references: [id])
+  cycle        Int
+  clock        Int
+  input        Int
+  outputs      String
+  timestamp    DateTime   @default(now())
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  difficulty  String
+  objective   String
+  testCases   String
+  hints       String
+}
+
+model CircuitPreset {
+  id            String   @id @default(uuid())
+  name          String
+  circuitType   String
+  configuration String
+  description   String
+  learningLevel String
+}
