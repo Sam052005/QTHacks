@@ -27,10 +27,17 @@ export function ControlPanel() {
     togglePropagationDelay,
     toggleSignalFlow,
     toggleAutoDetect,
+    resetSimulation,
+    isRunning
   } = useSimulationStore()
 
+  const handleParamChange = (action: () => void) => {
+    if (isRunning) resetSimulation()
+    action()
+  }
+
   return (
-    <aside className="flex w-72 flex-col border-r border-border bg-card">
+    <aside className="flex w-full h-full flex-col border-r border-border bg-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <Settings className="h-4 w-4 text-primary" />
@@ -51,7 +58,7 @@ export function ControlPanel() {
             </Label>
             <Input
               value={inputBitSequence}
-              onChange={(e) => setInputBitSequence(e.target.value.replace(/[^01]/g, ''))}
+              onChange={(e) => handleParamChange(() => setInputBitSequence(e.target.value.replace(/[^01]/g, '')))}
               placeholder="e.g., 10110100"
               className="font-mono text-sm bg-secondary/50"
             />
@@ -63,7 +70,7 @@ export function ControlPanel() {
             </Label>
             <Slider
               value={[numFlipFlops]}
-              onValueChange={([v]) => setNumFlipFlops(v)}
+              onValueChange={([v]) => handleParamChange(() => setNumFlipFlops(v))}
               min={1}
               max={8}
               step={1}
@@ -77,7 +84,7 @@ export function ControlPanel() {
             </Label>
             <Slider
               value={[simulationCycles]}
-              onValueChange={([v]) => setSimulationCycles(v)}
+              onValueChange={([v]) => handleParamChange(() => setSimulationCycles(v))}
               min={4}
               max={32}
               step={4}

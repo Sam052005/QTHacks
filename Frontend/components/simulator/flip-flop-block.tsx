@@ -15,13 +15,15 @@ interface FlipFlopBlockProps {
   index: number
   state: FlipFlopState
   circuitType: string
+  showPropagationDelay?: boolean
 }
 
 export function FlipFlopBlock({ 
   position, 
   index, 
   state, 
-  circuitType 
+  circuitType,
+  showPropagationDelay = true
 }: FlipFlopBlockProps) {
   const meshRef = useRef<THREE.Mesh>(null)
   const highlightGlowRef = useRef<THREE.Mesh>(null)
@@ -29,18 +31,25 @@ export function FlipFlopBlock({
   const connectionMaterialRef = useRef<THREE.MeshStandardMaterial>(null)
   
   const [justUpdated, setJustUpdated] = useState(false)
+  const [displayQ, setDisplayQ] = useState(state.q)
   const prevQ = useRef(state.q)
 
   useEffect(() => {
     if (state.q !== prevQ.current) {
-      setJustUpdated(true)
-      const timer = setTimeout(() => setJustUpdated(false), 500)
+      const delay = showPropagationDelay ? 300 : 0
+      
+      const timer = setTimeout(() => {
+        setDisplayQ(state.q)
+        setJustUpdated(true)
+        setTimeout(() => setJustUpdated(false), 500)
+      }, delay)
+      
       prevQ.current = state.q
       return () => clearTimeout(timer)
     }
-  }, [state.q])
+  }, [state.q, showPropagationDelay])
 
-  const isActive = state.q === 1
+  const isActive = displayQ === 1
   const targetColor = isActive ? new THREE.Color('#22c55e') : new THREE.Color('#1e3a5f')
   const targetEmissive = isActive ? 0.8 : 0.1
 

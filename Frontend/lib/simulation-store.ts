@@ -96,6 +96,7 @@ export interface SimulationState {
   setGroqApiKey: (key: string) => void
   togglePause: () => void
   stopSimulation: () => void
+  _intervalId?: NodeJS.Timeout | null
 }
 
 const initialFlipFlops = (count: number): FlipFlopState[] => 
@@ -152,7 +153,22 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     flipFlops: initialFlipFlops(num) 
   }),
   
-  setClockFrequency: (freq) => set({ clockFrequency: freq }),
+  setClockFrequency: (freq) => {
+    set({ clockFrequency: freq })
+    const { isRunning, isPaused, _intervalId, startSimulation } = get()
+    
+    // If running, we need to restart the interval with the new frequency
+    if (isRunning && _intervalId) {
+      clearInterval(_intervalId)
+      const interval = setInterval(() => {
+        const { isRunning, isPaused, stepClock } = get()
+        if (isRunning && !isPaused) {
+          stepClock()
+        }
+      }, 1000 / freq)
+      set({ _intervalId: interval })
+    }
+  },
   
   setSimulationCycles: (cycles) => set({ simulationCycles: cycles }),
   
@@ -209,7 +225,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       })
       const runData = await runRes.json()
       
-      // Sort timing data by cycle to ensure correct consumption
       const timingList = runData.timingData || []
       timingList.sort((a: any, b: any) => a.cycle - b.cycle)
       
@@ -222,6 +237,20 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
         timingData: [],
         flipFlops: initialFlipFlops(state.numFlipFlops)
       })
+
+      // START HEARTBEAT
+      const { _intervalId } = get()
+      if (_intervalId) clearInterval(_intervalId)
+      
+      const interval = setInterval(() => {
+        const { isRunning, isPaused, stepClock } = get()
+        if (isRunning && !isPaused) {
+          stepClock()
+        }
+      }, 1000 / state.clockFrequency)
+      
+      set({ _intervalId: interval })
+
     } catch (e) {
       console.error("Backend Error: ", e)
     }
@@ -232,8 +261,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   stepClock: () => {
     const state = get()
     if (state.currentCycle >= state.backendTimingData.length) {
-      // End simulation cleanly
-      set({ isRunning: false })
+      // Simulation finished
+      const { _intervalId } = get()
+      if (_intervalId) clearInterval(_intervalId)
+      set({ isRunning: false, _intervalId: null })
       return
     }
     
@@ -265,14 +296,19 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     })
   },
   
-  resetSimulation: () => set((state) => ({
-    isRunning: false,
-    isPaused: false,
-    currentCycle: 0,
-    flipFlops: initialFlipFlops(state.numFlipFlops),
-    timingData: [],
-    activeSignals: [],
-  })),
+  resetSimulation: () => {
+    const { _intervalId } = get()
+    if (_intervalId) clearInterval(_intervalId)
+    set((state) => ({
+      isRunning: false,
+      isPaused: false,
+      currentCycle: 0,
+      flipFlops: initialFlipFlops(state.numFlipFlops),
+      timingData: [],
+      activeSignals: [],
+      _intervalId: null
+    }))
+  },
   
   updateFlipFlops: (states) => set({ flipFlops: states }),
   
@@ -313,5 +349,9 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   
   togglePause: () => set((state) => ({ isPaused: !state.isPaused })),
   
-  stopSimulation: () => set({ isRunning: false, isPaused: false })
+  stopSimulation: () => {
+    const { _intervalId } = get()
+    if (_intervalId) clearInterval(_intervalId)
+    set({ isRunning: false, isPaused: false, _intervalId: null })
+  }
 }))

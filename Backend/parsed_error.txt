@@ -1,0 +1,71 @@
+﻿node.exe : 
+At C:\Program Files\nod
+ejs\npx.ps1:29 char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (:String) [],    
+ RemoteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+node:internal/modules/r
+un_main:122
+    triggerUncaughtExce
+ption(
+    ^
+Error [ERR_MODULE_NOT_F
+OUND]: Cannot find 
+package 'csv-writer' 
+imported from D:\QTHack
+s\Backend\src\services\
+exportService.ts
+    at Object.getPackag
+eJSONURL (node:internal
+/modules/package_json_r
+eader:268:9)
+    at packageResolve (
+node:internal/modules/e
+sm/resolve:768:81)
+    at moduleResolve (n
+ode:internal/modules/es
+m/resolve:854:18)
+    at defaultResolve (
+node:internal/modules/e
+sm/resolve:984:11)
+    at nextResolve (nod
+e:internal/modules/esm/
+hooks:748:28)
+    at resolveBase (fil
+e:///D:/QTHacks/Backend
+/node_modules/tsx/dist/
+esm/index.mjs?177428896
+8091:2:3744)
+    at 
+resolveDirectory (file:
+///D:/QTHacks/Backend/n
+ode_modules/tsx/dist/es
+m/index.mjs?17742889680
+91:2:4243)
+    at resolveTsPaths (
+file:///D:/QTHacks/Back
+end/node_modules/tsx/di
+st/esm/index.mjs?177428
+8968091:2:4984)
+    at resolve (file://
+/D:/QTHacks/Backend/nod
+e_modules/tsx/dist/esm/
+index.mjs?1774288968091
+:2:5361)
+    at nextResolve (nod
+e:internal/modules/esm/
+hooks:748:28) {
+  code: 
+'ERR_MODULE_NOT_FOUND'
+}
+
+Node.js v22.14.0

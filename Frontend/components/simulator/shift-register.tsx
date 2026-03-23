@@ -6,7 +6,7 @@ import { FlipFlopBlock } from './flip-flop-block'
 import { SignalPulse } from './signal-pulse'
 
 export function ShiftRegisterVisual() {
-  const { flipFlops, circuitType, showSignalFlow, currentCycle } = useSimulationStore()
+  const { flipFlops, circuitType, showSignalFlow, currentCycle, showPropagationDelay } = useSimulationStore()
   
   const flipFlopSpacing = 2.8
   const startX = -(flipFlops.length - 1) * flipFlopSpacing / 2
@@ -21,6 +21,7 @@ export function ShiftRegisterVisual() {
             index={i}
             state={ff}
             circuitType={circuitType}
+            showPropagationDelay={showPropagationDelay}
           />
         </Float>
       ))}

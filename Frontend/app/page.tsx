@@ -64,7 +64,6 @@ export default function SimulatorPage() {
   const [showDebugPanel, setShowDebugPanel] = useState(false)
   const [controlPanelWidth, setControlPanelWidth] = useState(280)
   const [isMounted, setIsMounted] = useState(false)
-  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -88,29 +87,7 @@ export default function SimulatorPage() {
     }
   }, [circuitType, numFlipFlops, setDetectedCircuit])
 
-  // Simulation loop
-  useEffect(() => {
-    if (isRunning && !isPaused && currentCycle < simulationCycles) {
-      intervalRef.current = setInterval(() => {
-        stepClock()
-      }, 1000 / clockFrequency)
-    }
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [isRunning, isPaused, clockFrequency, currentCycle, simulationCycles, stepClock])
-
-  // Auto-stop when simulation completes
-  useEffect(() => {
-    if (currentCycle >= simulationCycles && isRunning) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current)
-      }
-    }
-  }, [currentCycle, simulationCycles, isRunning])
 
   if (!isMounted) return <CanvasLoader />
 
