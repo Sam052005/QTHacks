@@ -1,4 +1,5 @@
-import { FlipFlop, DFlipFlop, LogicState, FlipFlopState } from './flipflops';
+import { FlipFlop, DFlipFlop } from './flipflops.js';
+import type { LogicState, FlipFlopState } from './flipflops.js';
 
 export type CircuitType = 'SHIFT_REGISTER' | 'RING_COUNTER' | 'JOHNSON_COUNTER';
 

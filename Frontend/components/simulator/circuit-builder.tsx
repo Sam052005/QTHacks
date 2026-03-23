@@ -17,7 +17,8 @@ import {
   Position,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { Clock, Circle, Cpu, TriangleAlert, Minus, CircleDot } from 'lucide-react'
+import { Clock, Circle, Cpu, TriangleAlert, Minus, CircleDot, Trash2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 // Custom Node Components
 function ClockNode({ data }: { data: { label: string } }) {
@@ -362,10 +363,15 @@ export function CircuitBuilder() {
     setNodeIdCounter((c) => c + 1)
   }, [setNodes, nodeIdCounter])
 
+  const deleteSelected = useCallback(() => {
+    setNodes((nds) => nds.filter((n) => !n.selected))
+    setEdges((eds) => eds.filter((e) => !e.selected))
+  }, [setNodes, setEdges])
+
   return (
     <div className="flex h-full">
       {/* Component Palette */}
-      <div className="w-56 border-r border-border bg-card p-4">
+      <div className="w-56 border-r border-border bg-card p-4 overflow-y-auto">
         <h3 className="mb-3 text-sm font-semibold text-foreground">Components</h3>
         <p className="mb-4 text-xs text-muted-foreground">
           Click to add components to the canvas. Connect them by dragging from handles.
@@ -380,6 +386,18 @@ export function CircuitBuilder() {
               {comp.label}
             </button>
           ))}
+        </div>
+        
+        <div className="mt-4">
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="w-full gap-2" 
+            onClick={deleteSelected}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Selected
+          </Button>
         </div>
         
         <div className="mt-6 rounded-md border border-border bg-secondary/30 p-3">

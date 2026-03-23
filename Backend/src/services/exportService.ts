@@ -1,4 +1,4 @@
-import prisma from '../db';
+import prisma from '../db.js';
 import { createObjectCsvWriter } from 'csv-writer';
 import fs from 'fs';
 import path from 'path';

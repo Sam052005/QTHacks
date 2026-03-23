@@ -1,6 +1,7 @@
 'use client'
 
-import { Play, Pause, SkipForward, RotateCcw, Cpu, Wrench, Brain } from 'lucide-react'
+import { Play, Pause, SkipForward, RotateCcw, Cpu, Wrench, Brain, User as UserIcon } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { useSimulationStore, CircuitType } from '@/lib/simulation-store'
+import { useAuthStore } from '@/lib/auth-store'
 
 const circuitTypes: CircuitType[] = [
   'D Flip-Flop',
@@ -41,6 +43,9 @@ export function NavigationBar({ onDebugClick }: NavigationBarProps) {
     stepClock,
     resetSimulation,
   } = useSimulationStore()
+  
+  const { user } = useAuthStore()
+  const router = useRouter()
 
   return (
     <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4">
@@ -159,7 +164,32 @@ export function NavigationBar({ onDebugClick }: NavigationBarProps) {
           <Brain className="h-4 w-4" />
           Debug
         </Button>
+
+        {/* Auth Section */}
+        <div className="flex items-center gap-2 border-l border-border pl-3 ml-1">
+          {user ? (
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="gap-2"
+              onClick={() => router.push('/profile')}
+            >
+              <UserIcon className="h-4 w-4" />
+              <span className="hidden md:inline font-medium">{user.username}</span>
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="ghost" onClick={() => router.push('/login')}>
+                Login
+              </Button>
+              <Button size="sm" onClick={() => router.push('/signup')}>
+                Sign Up
+              </Button>
+            </>
+          )}
+        </div>
       </div>
+
     </header>
   )
 }

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { SimulationService } from '../services/simulationService';
+import { SimulationService } from '../services/simulationService.js';
 
 const router = Router();
 const simulationService = new SimulationService();

@@ -1,5 +1,6 @@
-import prisma from '../db';
-import { SimulationService } from './simulationService';
+import prisma from '../db.js';
+import { SimulationService } from './simulationService.js';
+import type { FlipFlopState } from '../engine/flipflops.js';
 
 export interface Breakpoint {
     type: 'CYCLE' | 'STATE';

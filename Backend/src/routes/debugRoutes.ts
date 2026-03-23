@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { DebugService, Breakpoint } from '../services/debugService';
+import { DebugService } from '../services/debugService.js';
+import type { Breakpoint } from '../services/debugService.js';
 
 const router = Router();
 const debugService = new DebugService();

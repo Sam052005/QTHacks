@@ -1,5 +1,6 @@
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -58,4 +59,39 @@ model CircuitPreset {
   configuration String
   description   String
   learningLevel String
+}
+
+model User {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  password    String
+  collegeYear String
+  course      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects    Project[]
+}
+
+model Project {
+  id            String   @id @default(uuid())
+  userId        String   // Links to User.id (UUID)
+  user          User     @relation(fields: [userId], references: [id])
+  name          String
+  circuitType   String   @default("Shift Register")
+  numFlipFlops  Int      @default(4)
+  circuitParams Json?     // Simulation parameters object
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  chatMessages  ChatMemory[]
+}
+
+model ChatMemory {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id])
+  role      String   // "user", "assistant", "system"
+  content   String
+  createdAt DateTime @default(now())
 }

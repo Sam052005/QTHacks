@@ -56,6 +56,7 @@ export default function SimulatorPage() {
     setDetectedCircuit,
     circuitType,
     numFlipFlops,
+    setProjectId,
   } = useSimulationStore()
   
   const [showHero, setShowHero] = useState(true)
@@ -67,7 +68,12 @@ export default function SimulatorPage() {
 
   useEffect(() => {
     setIsMounted(true)
-  }, [])
+    const urlParams = new URLSearchParams(window.location.search)
+    const id = urlParams.get('projectId')
+    if (id) {
+      setProjectId(id)
+    }
+  }, [setProjectId])
 
   // Auto-detect circuit type
   useEffect(() => {
@@ -175,7 +181,7 @@ export default function SimulatorPage() {
         )}
 
         {/* Center Panels with Tabs */}
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
           {/* Tab Bar */}
           <div className="flex items-center gap-1 border-b border-border bg-secondary/30 px-4 py-2">
             {(['Simulation', 'Analysis', 'Library', 'Challenges'] as const).map((tab) => (
@@ -192,9 +198,9 @@ export default function SimulatorPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {tabActive === 'Simulation' && (
-              <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
                 <div className="flex-1 overflow-hidden">
                   {viewMode === 'simulator' ? (
                     <CircuitCanvas />
@@ -208,15 +214,19 @@ export default function SimulatorPage() {
               </div>
             )}
             
-            {tabActive === 'Analysis' && <AnalysisPanel />}
-            {tabActive === 'Library' && <CircuitLibrary />}
-            {tabActive === 'Challenges' && <ChallengesPanel />}
+            {tabActive !== 'Simulation' && (
+              <div className="flex-1 overflow-y-auto w-full relative">
+                {tabActive === 'Analysis' && <AnalysisPanel />}
+                {tabActive === 'Library' && <CircuitLibrary />}
+                {tabActive === 'Challenges' && <ChallengesPanel />}
+              </div>
+            )}
           </div>
         </div>
 
         {/* Right Debug Panel */}
         {showDebugPanel && (
-          <div className="w-80 shrink-0">
+          <div className="w-80 shrink-0 border-l border-border bg-card overflow-hidden">
             <AIDebugPanel onClose={() => setShowDebugPanel(false)} />
           </div>
         )}

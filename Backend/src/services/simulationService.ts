@@ -1,5 +1,6 @@
-import prisma from '../db';
-import { SequentialCircuit, ShiftRegister, RingCounter, JohnsonCounter } from '../engine/circuits';
+import prisma from '../db.js';
+import { SequentialCircuit, ShiftRegister, RingCounter, JohnsonCounter } from '../engine/circuits.js';
+import type { FlipFlopState } from '../engine/flipflops.js';
 
 export class SimulationService {
     

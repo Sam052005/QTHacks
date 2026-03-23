@@ -43,7 +43,7 @@ function Waveform({ label, data, color, labelColor, pixelsPerUnit, startIndex }:
       <div className="w-20 shrink-0 py-2 pr-2 text-right">
         <span className={`text-xs font-mono ${labelColor}`}>{label}</span>
       </div>
-      <div className="flex-1 overflow-x-auto py-1">
+      <div className="flex-1 py-1">
         <svg
           width={800}
           height={28}
@@ -96,7 +96,7 @@ function Waveform({ label, data, color, labelColor, pixelsPerUnit, startIndex }:
 }
 
 export function TimingDiagram() {
-  const { timingData, flipFlops, currentCycle, simulationCycles } = useSimulationStore()
+  const { timingData, flipFlops, currentCycle, simulationCycles, numFlipFlops } = useSimulationStore()
   const [pixelsPerUnit, setPixelsPerUnit] = useState(40)
   const [startIndex, setStartIndex] = useState(0)
 
@@ -204,11 +204,11 @@ export function TimingDiagram() {
       </div>
 
       {/* Waveforms */}
-      <div className="flex-1 overflow-y-auto">
-        <div>
+      <div className="flex-1 overflow-auto relative bg-card">
+        <div className="min-w-[800px]">
           {/* Time axis header */}
-          <div className="flex items-center gap-3 border-b border-border/50 bg-secondary/30">
-            <div className="w-20 shrink-0 py-1 pr-2 text-right">
+          <div className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/50 bg-secondary/80 backdrop-blur">
+            <div className="w-20 shrink-0 py-1 pr-2 text-right sticky left-0 bg-secondary/80">
               <span className="text-xs font-mono text-muted-foreground">Signal</span>
             </div>
             <div className="flex-1">
@@ -258,8 +258,8 @@ export function TimingDiagram() {
           />
 
           {/* Flip-flop outputs */}
-          {flipFlops.map((_, i) => {
-            const outputData = timingData.map(t => t.outputs[i] ?? 0)
+          {(flipFlops.length > 0 ? flipFlops : Array(numFlipFlops).fill(0)).map((_, i) => {
+            const outputData = timingData.map(t => (t.outputs && t.outputs[i] !== undefined) ? t.outputs[i] : 0)
             return (
               <Waveform
                 key={i}
@@ -272,6 +272,16 @@ export function TimingDiagram() {
               />
             )
           })}
+          
+          {/* Active Cycle Cursor Overlay */}
+          {currentCycle >= startIndex && currentCycle <= startIndex + Math.ceil(800 / pixelsPerUnit) && (
+            <div 
+              className="absolute top-0 bottom-0 border-l border-primary z-10 pointer-events-none transition-all duration-300"
+              style={{ left: 80 + (currentCycle - startIndex) * pixelsPerUnit }}
+            >
+              <div className="absolute -top-1 -left-[3px] h-2 w-2 rounded-full bg-primary" />
+            </div>
+          )}
         </div>
       </div>
 

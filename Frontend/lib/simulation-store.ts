@@ -47,7 +47,7 @@ export interface SimulationState {
   
   // View mode
   viewMode: 'simulator' | 'builder'
-  tabActive: 'Simulation' | 'Builder' | 'Analysis' | 'Challenges'
+  tabActive: 'Simulation' | 'Builder' | 'Library' | 'Analysis' | 'Challenges'
   detectedCircuit: string | null
   
   // Signal animation
@@ -63,6 +63,8 @@ export interface SimulationState {
   
   // Phase 8: Backend connection
   simulationId: string | null
+  projectId: string | null
+  groqApiKey: string
   backendTimingData: any[]
   
   // Actions
@@ -75,7 +77,7 @@ export interface SimulationState {
   toggleSignalFlow: () => void
   toggleAutoDetect: () => void
   setViewMode: (mode: 'simulator' | 'builder') => void
-  setTabActive: (tab: 'Simulation' | 'Builder' | 'Analysis' | 'Challenges') => void
+  setTabActive: (tab: 'Simulation' | 'Builder' | 'Library' | 'Analysis' | 'Challenges') => void
   startSimulation: () => void
   pauseSimulation: () => void
   stepClock: () => void
@@ -90,6 +92,10 @@ export interface SimulationState {
   clearChangedComponents: () => void
   setDelayMs: (delay: number) => void
   setLiveUpdate: (live: boolean) => void
+  setProjectId: (id: string | null) => void
+  setGroqApiKey: (key: string) => void
+  togglePause: () => void
+  stopSimulation: () => void
 }
 
 const initialFlipFlops = (count: number): FlipFlopState[] => 
@@ -134,6 +140,8 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   liveUpdate: true,
   
   simulationId: null,
+  projectId: null,
+  groqApiKey: typeof window !== 'undefined' ? localStorage.getItem('groqApiKey') || '' : '',
   backendTimingData: [],
   
   // Actions
@@ -202,7 +210,7 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       const runData = await runRes.json()
       
       // Sort timing data by cycle to ensure correct consumption
-      const timingList = runData.simulation?.timingData || []
+      const timingList = runData.timingData || []
       timingList.sort((a: any, b: any) => a.cycle - b.cycle)
       
       set({ 
@@ -293,4 +301,17 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setDelayMs: (delay) => set({ delayMs: delay }),
   
   setLiveUpdate: (live) => set({ liveUpdate: live }),
+
+  setProjectId: (id) => set({ projectId: id }),
+
+  setGroqApiKey: (key) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('groqApiKey', key)
+    }
+    set({ groqApiKey: key })
+  },
+  
+  togglePause: () => set((state) => ({ isPaused: !state.isPaused })),
+  
+  stopSimulation: () => set({ isRunning: false, isPaused: false })
 }))
