@@ -25,14 +25,25 @@ function Waveform({ label, data, color, labelColor, pixelsPerUnit, startIndex }:
     
     visibleData.forEach((value, i) => {
       const x = i * pixelsPerUnit
+      const midX = i * pixelsPerUnit + pixelsPerUnit / 2
       const nextX = (i + 1) * pixelsPerUnit
-      const y = value === 1 ? 4 : height - 4
-      const prevY = i > 0 ? (visibleData[i - 1] === 1 ? 4 : height - 4) : y
       
-      if (y !== prevY) {
-        d += ` L ${x} ${y}`
+      if (label === 'CLK') {
+        // Synthesize a square wave for each clock cycle
+        // Rising edge at start, falling edge at midpoint
+        d += ` L ${x} 4`
+        d += ` L ${midX} 4`
+        d += ` L ${midX} ${height - 4}`
+        d += ` L ${nextX} ${height - 4}`
+      } else {
+        const y = value === 1 ? 4 : height - 4
+        const prevY = i > 0 ? (visibleData[i - 1] === 1 ? 4 : height - 4) : y
+        
+        if (y !== prevY) {
+          d += ` L ${x} ${y}`
+        }
+        d += ` L ${nextX} ${y}`
       }
-      d += ` L ${nextX} ${y}`
     })
     
     return d
