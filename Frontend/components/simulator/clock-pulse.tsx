@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text } from '@react-three/drei'
+import { Text, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import { useSimulationStore } from '@/lib/simulation-store'
 
@@ -41,17 +41,18 @@ export function ClockPulse({ position }: ClockPulseProps) {
   return (
     <group position={position}>
       {/* Clock body */}
-      <mesh ref={meshRef} castShadow>
-        <cylinderGeometry args={[0.5, 0.5, 0.3, 32]} />
-        <meshStandardMaterial
+      <RoundedBox ref={meshRef} args={[0.8, 0.4, 0.8]} radius={0.05} castShadow>
+        <meshPhysicalMaterial
           ref={materialRef}
           color="#f97316"
-          metalness={0.6}
-          roughness={0.2}
+          metalness={0.9}
+          roughness={0.1}
           emissive="#fb923c"
-          emissiveIntensity={isHigh ? 2.0 : 0.3}
+          emissiveIntensity={isHigh ? 2.5 : 0.2}
+          transmission={0.2}
+          thickness={1}
         />
-      </mesh>
+      </RoundedBox>
       
       {/* Rotating outer ring */}
       <mesh ref={ringRef} position={[0, 0.2, 0]}>

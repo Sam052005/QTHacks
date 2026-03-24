@@ -97,6 +97,20 @@ export interface SimulationState {
   togglePause: () => void
   stopSimulation: () => void
   _intervalId?: NodeJS.Timeout | null
+
+  // Feature: Quantum Mode
+  quantumMode: boolean
+  qubitAlpha: number
+  qubitBeta: number
+  toggleQuantumMode: () => void
+  applyHadamard: () => void
+  applyPauliX: () => void
+  measureQubit: () => number
+  resetQubit: () => void
+
+  // Feature: Glitch Simulation
+  glitchMode: boolean
+  setGlitchMode: (enabled: boolean) => void
 }
 
 const initialFlipFlops = (count: number): FlipFlopState[] => 
@@ -144,6 +158,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   projectId: null,
   groqApiKey: typeof window !== 'undefined' ? localStorage.getItem('groqApiKey') || '' : '',
   backendTimingData: [],
+
+  // Quantum Mode
+  quantumMode: false,
+  qubitAlpha: 1,
+  qubitBeta: 0,
+
+  // Glitch Mode
+  glitchMode: false,
   
   // Actions
   setCircuitType: (type) => set({ circuitType: type }),
@@ -353,5 +375,32 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     const { _intervalId } = get()
     if (_intervalId) clearInterval(_intervalId)
     set({ isRunning: false, isPaused: false, _intervalId: null })
-  }
+  },
+
+  // Quantum Mode actions
+  toggleQuantumMode: () => set((state) => ({ quantumMode: !state.quantumMode })),
+
+  applyHadamard: () => set((state) => {
+    const { qubitAlpha: a, qubitBeta: b } = state
+    const sq2 = Math.sqrt(2)
+    return { qubitAlpha: (a + b) / sq2, qubitBeta: (a - b) / sq2 }
+  }),
+
+  applyPauliX: () => set((state) => ({
+    qubitAlpha: state.qubitBeta,
+    qubitBeta: state.qubitAlpha,
+  })),
+
+  measureQubit: () => {
+    const { qubitAlpha } = get()
+    const prob0 = qubitAlpha * qubitAlpha
+    const result = Math.random() < prob0 ? 0 : 1
+    set({ qubitAlpha: result === 0 ? 1 : 0, qubitBeta: result === 0 ? 0 : 1 })
+    return result
+  },
+
+  resetQubit: () => set({ qubitAlpha: 1, qubitBeta: 0 }),
+
+  // Glitch Mode
+  setGlitchMode: (enabled) => set({ glitchMode: enabled }),
 }))

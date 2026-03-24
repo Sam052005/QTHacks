@@ -9,6 +9,7 @@ import { AIDebugPanel } from '@/components/simulator/ai-debug-panel'
 import { AnalysisPanel } from '@/components/simulator/analysis-panel'
 import { CircuitLibrary } from '@/components/simulator/circuit-library'
 import { ChallengesPanel } from '@/components/simulator/challenges-panel'
+import { QuantumGatesPanel } from '@/components/simulator/quantum-gates-panel'
 import { Button } from '@/components/ui/button'
 import { useSimulationStore } from '@/lib/simulation-store'
 
@@ -26,6 +27,11 @@ const CircuitCanvas = dynamic(
 
 const CircuitBuilder = dynamic(
   () => import('@/components/simulator/circuit-builder').then(mod => ({ default: mod.CircuitBuilder })),
+  { ssr: false, loading: () => <CanvasLoader /> }
+)
+
+const BlochSphere = dynamic(
+  () => import('@/components/simulator/bloch-sphere').then(mod => ({ default: mod.BlochSphere })),
   { ssr: false, loading: () => <CanvasLoader /> }
 )
 
@@ -50,6 +56,7 @@ export default function SimulatorPage() {
     currentCycle,
     viewMode,
     tabActive,
+    quantumMode,
     setTabActive,
     stepClock,
     resetSimulation,
@@ -197,13 +204,27 @@ export default function SimulatorPage() {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {tabActive === 'Simulation' && (
               <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
-                <div className="flex-1 overflow-hidden">
-                  {viewMode === 'simulator' ? (
-                    <CircuitCanvas />
-                  ) : (
-                    <CircuitBuilder />
-                  )}
-                </div>
+                {/* Quantum Mode — split layout */}
+                {quantumMode ? (
+                  <div className="flex flex-1 overflow-hidden">
+                    {/* Bloch Sphere */}
+                    <div className="flex-1 border-r border-border overflow-hidden">
+                      <BlochSphere />
+                    </div>
+                    {/* Quantum Gates */}
+                    <div className="w-72 shrink-0 overflow-y-auto border-border bg-card">
+                      <QuantumGatesPanel />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1 overflow-hidden">
+                      {viewMode === 'simulator' ? (
+                        <CircuitCanvas />
+                      ) : (
+                        <CircuitBuilder />
+                      )}
+                    </div>
                 
                 {/* Timing Diagram - Sliding & Resizable */}
                 <div 
@@ -257,9 +278,11 @@ export default function SimulatorPage() {
                     </span>
                   </button>
                 )}
+              </>
+            )}
               </div>
             )}
-            
+
             {tabActive !== 'Simulation' && (
               <div className="flex-1 overflow-y-auto w-full relative">
                 {tabActive === 'Analysis' && <AnalysisPanel />}

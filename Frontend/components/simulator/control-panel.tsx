@@ -28,7 +28,9 @@ export function ControlPanel() {
     toggleSignalFlow,
     toggleAutoDetect,
     resetSimulation,
-    isRunning
+    isRunning,
+    glitchMode,
+    setGlitchMode,
   } = useSimulationStore()
 
   const handleParamChange = (action: () => void) => {
@@ -182,6 +184,31 @@ export function ControlPanel() {
               ))}
             </div>
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Glitch Simulation Toggle */}
+        <div className="space-y-3">
+          <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <Zap className="h-4 w-4 text-yellow-400" />
+            Glitch Simulation
+          </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-xs text-foreground">Enable Glitch Mode</Label>
+              <p className="text-[10px] text-muted-foreground">Injects random ±1-cycle signal jitter</p>
+            </div>
+            <Switch
+              checked={glitchMode}
+              onCheckedChange={setGlitchMode}
+            />
+          </div>
+          {glitchMode && (
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2">
+              <p className="text-[10px] text-yellow-400 font-medium animate-pulse">⚡ Glitch mode active — signals may flicker</p>
+            </div>
+          )}
         </div>
 
         <Separator />

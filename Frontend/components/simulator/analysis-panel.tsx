@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { BarChart, Bar, PieChart, Pie, AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts'
 import { Card } from '@/components/ui/card'
 import { useSimulationStore } from '@/lib/simulation-store'
+import { RealWorldPanel } from './real-world-panel'
 
 const COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899']
 
@@ -252,6 +253,11 @@ export function AnalysisPanel() {
             +{stateTransitions.length - 8} more states
           </div>
         )}
+      </Card>
+
+      {/* Real-World Mapping Section */}
+      <Card className="border-border bg-card">
+        <RealWorldPanel />
       </Card>
     </div>
   )

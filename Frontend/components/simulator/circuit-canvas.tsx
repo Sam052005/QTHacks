@@ -2,7 +2,7 @@
 
 import { useRef, useMemo, Suspense } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Text, Float } from '@react-three/drei'
+import { OrbitControls, Text, Float, Environment, ContactShadows, RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
 import { useSimulationStore } from '@/lib/simulation-store'
 import { ShiftRegisterVisual } from './shift-register'
@@ -20,16 +20,17 @@ function InputSource({ position }: { position: [number, number, number] }) {
 
   return (
     <group position={position}>
-      <mesh castShadow>
-        <boxGeometry args={[0.8, 0.8, 0.3]} />
-        <meshStandardMaterial
-          color={isActive ? '#22c55e' : '#1e3a5f'}
-          metalness={0.7}
-          roughness={0.3}
-          emissive={isActive ? '#22c55e' : '#1e3a5f'}
-          emissiveIntensity={isActive ? 0.6 : 0.1}
+      <RoundedBox args={[0.8, 0.8, 0.3]} radius={0.05} castShadow>
+        <meshPhysicalMaterial
+          color={isActive ? '#10b981' : '#1e3a5f'}
+          metalness={0.8}
+          roughness={0.2}
+          transmission={0.4}
+          thickness={0.5}
+          emissive={isActive ? '#10b981' : '#1e3a5f'}
+          emissiveIntensity={isActive ? 1.0 : 0.1}
         />
-      </mesh>
+      </RoundedBox>
       
       <Text
         position={[0, 0, 0.2]}
@@ -126,6 +127,15 @@ function Scene() {
       {/* Shift Register Flip-Flops and Wires */}
       <ShiftRegisterVisual />
 
+      {/* Premium Scene Lighting & Effects */}
+      <Environment preset="night" />
+      <ContactShadows 
+        position={[0, -1.5, 0]} 
+        opacity={0.4} 
+        scale={20} 
+        blur={2} 
+        far={4.5} 
+      />
 
       {/* Camera controls */}
       <OrbitControls

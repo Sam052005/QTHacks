@@ -78,18 +78,30 @@ export function SignalPulse({
         />
       </mesh>
 
-      {/* Moving Signal Particle */}
+      {/* Moving Signal Particle with Glow */}
       {showPulse && isActive && (
-        <mesh ref={pulseRef}>
-          <sphereGeometry args={[0.08, 16, 16]} />
-          <meshStandardMaterial
-            color="#a3e635"
-            emissive="#a3e635"
-            emissiveIntensity={2}
-            transparent
-            opacity={0.9}
-          />
-        </mesh>
+        <group ref={pulseRef as any}>
+          {/* Core particle */}
+          <mesh>
+            <sphereGeometry args={[0.08, 16, 16]} />
+            <meshStandardMaterial
+              color="#a3e635"
+              emissive="#a3e635"
+              emissiveIntensity={4}
+            />
+          </mesh>
+          {/* Outer glow sphere */}
+          <mesh>
+            <sphereGeometry args={[0.15, 16, 16]} />
+            <meshBasicMaterial
+              color="#a3e635"
+              transparent
+              opacity={0.3}
+            />
+          </mesh>
+          {/* Subtle PointLight for environmental glow */}
+          <pointLight color="#a3e635" intensity={0.5} distance={1} />
+        </group>
       )}
     </group>
   )

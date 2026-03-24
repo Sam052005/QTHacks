@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Text } from '@react-three/drei'
+import { Text, RoundedBox, Float } from '@react-three/drei'
 import * as THREE from 'three'
 
 interface FlipFlopState {
@@ -105,66 +105,113 @@ export function FlipFlopBlock({
 
   return (
     <group position={position}>
-      {/* Main Block Body */}
-      <mesh ref={meshRef} castShadow receiveShadow>
-        <boxGeometry args={[1.8, 1.4, 0.4]} />
-        <meshStandardMaterial
-          ref={materialRef}
-          color={targetColor}
-          metalness={0.7}
-          roughness={0.2}
-          emissive={targetColor}
-          emissiveIntensity={targetEmissive}
-        />
-      </mesh>
+      <Float speed={2} rotationIntensity={0.05} floatIntensity={0.2}>
+        {/* Main Glass Shell */}
+        <RoundedBox 
+          ref={meshRef} 
+          args={[1.8, 1.4, 0.4]} 
+          radius={0.08} 
+          smoothness={4} 
+          castShadow 
+          receiveShadow
+        >
+          <meshPhysicalMaterial
+            ref={materialRef}
+            color={isActive ? '#10b981' : '#1e293b'}
+            metalness={0.1}
+            roughness={0.1}
+            transmission={0.6}
+            thickness={0.5}
+            envMapIntensity={1}
+            emissive={targetColor}
+            emissiveIntensity={targetEmissive}
+          />
+        </RoundedBox>
 
-      {/* Aura / Highlight Glow */}
-      <mesh ref={highlightGlowRef}>
-        <boxGeometry args={[1.9, 1.5, 0.5]} />
-        <meshBasicMaterial
-          color={isActive ? '#4ade80' : '#60a5fa'}
-          transparent
-          opacity={0.0}
-          side={THREE.BackSide}
-        />
-      </mesh>
+        {/* Interior Core Logic Block */}
+        <mesh position={[0, 0, -0.05]}>
+          <boxGeometry args={[1.5, 1.1, 0.2]} />
+          <meshStandardMaterial 
+            color="#0f172a" 
+            metalness={0.8} 
+            roughness={0.2} 
+          />
+        </mesh>
 
-      {/* Hardware Text Labeling */}
-      <Text position={[0, 0.4, 0.25]} fontSize={0.18} color="#ffffff" anchorX="center" anchorY="middle">
-        {labelPrefix} FF{index + 1}
-      </Text>
+        {/* Aura / Highlight Glow (Internal) */}
+        <mesh ref={highlightGlowRef} position={[0, 0, -0.1]}>
+          <boxGeometry args={[1.6, 1.2, 0.1]} />
+          <meshBasicMaterial
+            color={isActive ? '#4ade80' : '#3b82f6'}
+            transparent
+            opacity={0.05}
+          />
+        </mesh>
 
-      {/* Input pins annotation */}
-      <Text position={[-0.7, 0.1, 0.25]} fontSize={0.12} color="#cbd5e1" anchorX="center">
-        {inputLabel}
-      </Text>
-      <Text position={[-0.7, -0.35, 0.25]} fontSize={0.12} color="#fb923c" anchorX="center">
-        CLK
-      </Text>
+        {/* State LED - Q */}
+        <mesh position={[0.6, 0.4, 0.22]}>
+          <sphereGeometry args={[0.08, 16, 16]} />
+          <meshStandardMaterial 
+            color={isActive ? "#4ade80" : "#1e293b"}
+            emissive={isActive ? "#4ade80" : "#000000"}
+            emissiveIntensity={isActive ? 5 : 0}
+          />
+          {isActive && <pointLight distance={1} intensity={1} color="#4ade80" />}
+        </mesh>
 
-      {/* Output pins annotation */}
-      <Text position={[0.7, 0.15, 0.25]} fontSize={0.14} color={isActive ? '#ffffff' : '#94a3b8'} anchorX="center" fontWeight={isActive ? "bold" : "normal"}>
-        Q={state.q}
-      </Text>
-      <Text position={[0.7, -0.2, 0.25]} fontSize={0.1} color="#64748b" anchorX="center">
-        Q̅={state.qBar}
-      </Text>
+        {/* State LED - QBar */}
+        <mesh position={[0.6, -0.4, 0.22]}>
+          <sphereGeometry args={[0.08, 16, 16]} />
+          <meshStandardMaterial 
+            color={!isActive ? "#ef4444" : "#1e293b"}
+            emissive={!isActive ? "#ef4444" : "#000000"}
+            emissiveIntensity={!isActive ? 3 : 0}
+          />
+        </mesh>
 
-      {/* Physical nodes */}
-      <mesh position={[-1, 0.1, 0]}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial color="#3b82f6" emissive="#3b82f6" emissiveIntensity={0.5} />
-      </mesh>
+        {/* Hardware Text Labeling */}
+        <Text 
+          position={[-0.4, 0.4, 0.22]} 
+          fontSize={0.18} 
+          color="#f8fafc" 
+          anchorX="left" 
+          anchorY="middle"
+          fontWeight="bold"
+        >
+          {labelPrefix} FF{index + 1}
+        </Text>
 
-      <mesh position={[-1, -0.35, 0]}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial color="#f97316" emissive="#f97316" emissiveIntensity={0.8} />
-      </mesh>
+        {/* Dynamic State Info */}
+        <group position={[0,0,0.22]}>
+          <Text position={[-0.7, 0.1, 0]} fontSize={0.12} color="#94a3b8" anchorX="center">
+            {inputLabel}
+          </Text>
+          <Text position={[-0.7, -0.35, 0]} fontSize={0.12} color="#f97316" anchorX="center">
+            CLK
+          </Text>
+          
+          <Text position={[0.6, 0.15, 0]} fontSize={0.12} color={isActive ? "#4ade80" : "#64748b"} anchorX="right">
+            Q
+          </Text>
+          <Text position={[0.6, -0.15, 0]} fontSize={0.12} color={!isActive ? "#ef4444" : "#64748b"} anchorX="right">
+            Q̅
+          </Text>
+        </group>
 
-      <mesh position={[1, 0.15, 0]}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshStandardMaterial ref={connectionMaterialRef} color={isActive ? '#4ade80' : '#1e3a8a'} emissive={isActive ? '#4ade80' : '#1e3a8a'} emissiveIntensity={isActive ? 1.5 : 0.2} />
-      </mesh>
+        {/* Connection Terminal Pins */}
+        <mesh position={[-0.95, 0.1, 0]} rotation={[0, Math.PI/2, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.2, 8]} />
+          <meshStandardMaterial color="#94a3b8" metalness={0.9} roughness={0.1} />
+        </mesh>
+        <mesh position={[-0.95, -0.35, 0]} rotation={[0, Math.PI/2, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.2, 8]} />
+          <meshStandardMaterial color="#f97316" metalness={0.9} roughness={0.1} />
+        </mesh>
+        <mesh position={[0.95, 0.15, 0]} rotation={[0, Math.PI/2, 0]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.2, 8]} />
+          <meshStandardMaterial ref={connectionMaterialRef} color={isActive ? '#4ade80' : '#1e3a8a'} metalness={0.9} />
+        </mesh>
+      </Float>
     </group>
   )
 }

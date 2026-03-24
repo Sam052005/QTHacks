@@ -440,6 +440,7 @@ export function CircuitBuilder() {
                 default: return '#64748b'
               }
             }}
+            style={{ width: 140, height: 105 }}
             className="!bg-card !border-border !rounded-lg"
           />
         </ReactFlow>
