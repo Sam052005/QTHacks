@@ -130,7 +130,7 @@ export function FlipFlopBlock({
       </mesh>
 
       {/* Hardware Text Labeling */}
-      <Text position={[0, 0.4, 0.25]} fontSize={0.18} color="#ffffff" anchorX="center" anchorY="middle" font="/fonts/inter.woff">
+      <Text position={[0, 0.4, 0.25]} fontSize={0.18} color="#ffffff" anchorX="center" anchorY="middle">
         {labelPrefix} FF{index + 1}
       </Text>
 

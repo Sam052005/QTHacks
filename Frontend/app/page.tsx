@@ -62,7 +62,9 @@ export default function SimulatorPage() {
   const [showHero, setShowHero] = useState(true)
   const [showControlPanel, setShowControlPanel] = useState(true)
   const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [showTimingDiagram, setShowTimingDiagram] = useState(true)
   const [controlPanelWidth, setControlPanelWidth] = useState(280)
+  const [timingDiagramHeight, setTimingDiagramHeight] = useState(256)
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -122,11 +124,17 @@ export default function SimulatorPage() {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Control Panel - Expandable */}
-        {showControlPanel && (
-          <div className="flex flex-col border-r border-border relative group" style={{ width: `${controlPanelWidth}px` }}>
+        {/* Left Control Panel - Sliding & Resizable */}
+        <div 
+          className="flex flex-col border-r border-border relative group transition-all duration-300 ease-in-out overflow-hidden" 
+          style={{ width: showControlPanel ? `${controlPanelWidth}px` : '0px' }}
+        >
+          <div className="w-[280px] h-full overflow-hidden" style={{ width: `${controlPanelWidth}px` }}>
             <ControlPanel />
-            {/* Resize Handle */}
+          </div>
+          
+          {/* Resize Handle (Vertical) */}
+          {showControlPanel && (
             <div
               onMouseDown={(e) => {
                 const startX = e.clientX
@@ -142,18 +150,29 @@ export default function SimulatorPage() {
                 document.addEventListener('mousemove', handleMouseMove)
                 document.addEventListener('mouseup', handleMouseUp)
               }}
-              className="absolute right-0 top-0 bottom-0 w-1 bg-border hover:bg-primary cursor-col-resize opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute right-0 top-0 bottom-0 w-1.5 bg-border hover:bg-primary cursor-col-resize z-50 opacity-0 group-hover:opacity-100 transition-opacity"
             />
-          </div>
-        )}
+          )}
 
-        {/* Toggle Control Panel Button */}
+          {/* Toggle Button (Slide out) */}
+          <button
+            onClick={() => setShowControlPanel(false)}
+            className="absolute -right-3 top-1/2 -translate-y-1/2 h-12 w-3 bg-secondary border border-border rounded-l flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-50"
+          >
+            <span className="text-[10px] text-muted-foreground">‹</span>
+          </button>
+        </div>
+
+        {/* Restore Control Panel Tab */}
         {!showControlPanel && (
           <button
             onClick={() => setShowControlPanel(true)}
-            className="px-2 py-2 text-xs text-muted-foreground hover:text-foreground border-r border-border bg-secondary/30 writing-vertical"
+            className="w-8 shrink-0 flex items-center justify-center border-r border-border bg-secondary/20 hover:bg-secondary/40 transition-colors cursor-pointer group"
+            title="Expand Control Panel"
           >
-            Panel
+            <span className="writing-vertical text-[10px] font-bold tracking-widest text-muted-foreground uppercase group-hover:text-primary">
+              Control
+            </span>
           </button>
         )}
 
@@ -185,9 +204,59 @@ export default function SimulatorPage() {
                     <CircuitBuilder />
                   )}
                 </div>
-                <div className="h-64 shrink-0">
-                  <TimingDiagram />
+                
+                {/* Timing Diagram - Sliding & Resizable */}
+                <div 
+                  className="border-t border-border relative group transition-all duration-300 ease-in-out" 
+                  style={{ height: showTimingDiagram ? `${timingDiagramHeight}px` : '0px' }}
+                >
+                  {/* Resize Handle (Horizontal) */}
+                  {showTimingDiagram && (
+                    <div
+                      onMouseDown={(e) => {
+                        const startY = e.clientY
+                        const startHeight = timingDiagramHeight
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                          const diff = startY - moveEvent.clientY
+                          setTimingDiagramHeight(Math.max(120, Math.min(600, startHeight + diff)))
+                        }
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove)
+                          document.removeEventListener('mouseup', handleMouseUp)
+                        }
+                        document.addEventListener('mousemove', handleMouseMove)
+                        document.addEventListener('mouseup', handleMouseUp)
+                      }}
+                      className="absolute left-0 right-0 -top-1 h-2 bg-border hover:bg-primary cursor-row-resize z-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                  )}
+                  
+                  {/* Collapse Toggle */}
+                  {showTimingDiagram && (
+                    <button
+                      onClick={() => setShowTimingDiagram(false)}
+                      className="absolute left-1/2 -translate-x-1/2 -top-3 h-3 w-12 bg-secondary border border-border rounded-t flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-50"
+                    >
+                      <span className="text-[10px] text-muted-foreground leading-none">▾</span>
+                    </button>
+                  )}
+
+                  <div className="h-full w-full overflow-hidden">
+                    <TimingDiagram />
+                  </div>
                 </div>
+
+                {/* Restore Timing Diagram Tab */}
+                {!showTimingDiagram && (
+                  <button 
+                    onClick={() => setShowTimingDiagram(true)}
+                    className="h-8 border-t border-border bg-secondary/20 hover:bg-secondary/40 flex items-center justify-center cursor-pointer group transition-colors"
+                  >
+                    <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase group-hover:text-primary">
+                      Timing Diagram
+                    </span>
+                  </button>
+                )}
               </div>
             )}
             
