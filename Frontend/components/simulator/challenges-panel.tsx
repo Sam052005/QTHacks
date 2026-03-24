@@ -99,7 +99,11 @@ export function ChallengesPanel() {
     setNumFlipFlops,
     setInputBitSequence,
     resetSimulation,
+    simulationId,
   } = useSimulationStore()
+  
+  const [verifying, setVerifying] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null)
 
   const loadChallenge = (challenge: Challenge) => {
     setCircuitType(challenge.circuitType)
@@ -108,6 +112,39 @@ export function ChallengesPanel() {
       setInputBitSequence(challenge.expectedPattern)
     }
     resetSimulation()
+  }
+
+  const verifyChallenge = async (id: string) => {
+    if (!simulationId) {
+      setMessage({ text: 'Please start a simulation first!', type: 'error' })
+      return
+    }
+
+    setVerifying(id)
+    setMessage(null)
+
+    try {
+      const response = await fetch(`http://localhost:3001/api/challenges/${id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ simulationId })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        if (!completed.find(c => c.id === id)) {
+          setCompleted([...completed, { id, completedAt: Date.now() }])
+        }
+        setMessage({ text: data.message, type: 'success' })
+      } else {
+        setMessage({ text: data.message, type: 'error' })
+      }
+    } catch (err) {
+      setMessage({ text: 'Failed to verify. Is the backend running?', type: 'error' })
+    } finally {
+      setVerifying(null)
+    }
   }
 
   const completeChallenge = (id: string) => {
@@ -218,14 +255,25 @@ export function ChallengesPanel() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => completeChallenge(challenge.id)}
+                      onClick={() => verifyChallenge(challenge.id)}
+                      disabled={verifying === challenge.id}
                       className="gap-2"
                     >
-                      <CheckCircle2 className="h-4 w-4" />
-                      Complete
+                      {verifying === challenge.id ? (
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4" />
+                      )}
+                      Verify
                     </Button>
                   )}
                 </div>
+
+                {message && verifying === null && !completed && (
+                  <p className={`text-[10px] font-medium ${message.type === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                    {message.text}
+                  </p>
+                )}
               </div>
             </div>
           )

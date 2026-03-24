@@ -74,14 +74,22 @@ export function CircuitLibrary() {
     setInputBitSequence,
     setSimulationCycles,
     resetSimulation,
+    setTabActive,
+    startSimulation,
   } = useSimulationStore()
 
-  const loadPreset = (preset: CircuitPreset) => {
+  const loadPreset = async (preset: CircuitPreset) => {
     setCircuitType(preset.circuitType)
     setNumFlipFlops(preset.numFlipFlops)
     setInputBitSequence(preset.inputSequence)
     setSimulationCycles(preset.cycles)
     resetSimulation()
+    setTabActive('Simulation')
+    
+    // Small delay to ensure state propagates before starting
+    setTimeout(() => {
+      startSimulation()
+    }, 100)
   }
 
   const copyPresetCode = (preset: CircuitPreset) => {

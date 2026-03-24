@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import prisma from '../db.js';
+import { ChallengeService } from '../services/challengeService.js';
 
 const router = Router();
+const challengeService = new ChallengeService();
 
 router.get('/', async (req, res) => {
     try {
@@ -14,13 +16,16 @@ router.get('/', async (req, res) => {
 
 router.post('/:id/submit', async (req, res) => {
     try {
-        const challenge = await prisma.challenge.findUnique({ where: { id: req.params.id } });
-        if (!challenge) return res.status(404).json({ error: "Challenge not found" });
+        const { id } = req.params;
+        const { simulationId } = req.body;
+        
+        if (!simulationId) {
+            return res.status(400).json({ error: "simulationId is required" });
+        }
 
-        // Dummy validation against expected outputs
-        const isSolutionCorrect = true; // In a full implementation, run simulation vs expected
+        const success = await challengeService.verifyChallenge(id, simulationId);
 
-        res.json({ success: isSolutionCorrect, message: isSolutionCorrect ? 'Challenge completed!' : 'Incorrect solution.' });
+        res.json({ success, message: success ? 'Challenge completed!' : 'Solution is not quite right yet. Keep trying!' });
     } catch (error: any) {
         res.status(400).json({ error: error.message });
     }
