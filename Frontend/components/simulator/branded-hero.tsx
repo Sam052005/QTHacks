@@ -24,7 +24,7 @@ export function BrandedHero() {
               See the circuit <span className="text-primary">think.</span>
             </h1>
             <p className="text-base text-muted-foreground mb-6 max-w-lg">
-              Real-time 3D visualization powered by MATLAB simulation engine. Watch sequential logic circuits evolve in real-time with interactive step-by-step execution.
+              Real-time 3D visualization. Watch sequential logic circuits evolve in real-time with interactive step-by-step execution.
             </p>
           </div>
 
@@ -32,7 +32,7 @@ export function BrandedHero() {
           <div className="space-y-2">
             <Card className="p-3 bg-card/50 border-border">
               <div className="text-xs text-muted-foreground">Engine</div>
-              <div className="text-sm font-semibold text-foreground">MATLAB Powered</div>
+              <div className="text-sm font-semibold text-foreground">Sequential Logic</div>
             </Card>
             <Card className="p-3 bg-card/50 border-border">
               <div className="text-xs text-muted-foreground">Visualization</div>

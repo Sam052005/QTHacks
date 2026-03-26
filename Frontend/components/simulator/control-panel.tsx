@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { useSimulationStore } from '@/lib/simulation-store'
+import { HardwareToggle } from '@/components/simulator/hardware-toggle'
 
 export function ControlPanel() {
   const {
@@ -47,6 +48,11 @@ export function ControlPanel() {
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {/* Hardware Integration Section */}
+        <HardwareToggle />
+
+        <Separator />
+
         {/* Input Configuration */}
         <div className="space-y-3">
           <h3 className="flex items-center gap-2 text-sm font-medium text-foreground">

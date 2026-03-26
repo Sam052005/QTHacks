@@ -1,4 +1,4 @@
-import { Play, Pause, SkipForward, RotateCcw, Cpu, Wrench, Brain, User as UserIcon, Atom, Download, Bug } from 'lucide-react'
+import { Play, Pause, SkipForward, RotateCcw, Cpu, Wrench, Brain, User as UserIcon, Atom, Download, Bug, Trophy } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -25,9 +25,10 @@ const circuitTypes: CircuitType[] = [
 
 interface NavigationBarProps {
   onDebugClick?: () => void
+  isChallengeMode?: boolean
 }
 
-export function NavigationBar({ onDebugClick }: NavigationBarProps) {
+export function NavigationBar({ onDebugClick, isChallengeMode = false }: NavigationBarProps) {
   const {
     circuitType,
     numFlipFlops,
@@ -50,18 +51,24 @@ export function NavigationBar({ onDebugClick }: NavigationBarProps) {
   const router = useRouter()
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-2">
-      <div className="flex items-center gap-2">
-        <div className="flex items-center">
+    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-2 overflow-hidden">
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center min-w-[40px]">
           <Image 
             src="/Logo.jpeg" 
             alt="Logo" 
             width={120} 
             height={36} 
-            className="h-9 w-auto object-contain"
+            className="h-8 w-auto object-contain cursor-default"
             priority
           />
         </div>
+        {isChallengeMode && (
+          <div className="ml-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30">
+            <Trophy className="h-3 w-3 text-primary" />
+            <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Challenge Mode</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
@@ -160,25 +167,27 @@ export function NavigationBar({ onDebugClick }: NavigationBarProps) {
           size="sm"
           variant="outline"
           onClick={onDebugClick}
-          className="gap-1.5"
+          className="h-8 w-8 lg:w-auto lg:px-3 p-0 gap-1.5"
+          title="AI Debug"
         >
           <Brain className="h-4 w-4" />
-          Debug
+          <span className="hidden lg:inline">Debug</span>
         </Button>
 
         {/* Verilog Export */}
         <Button
           size="sm"
           variant="outline"
-          className="gap-1.5 border-green-500/40 hover:border-green-500 hover:bg-green-500/10 text-green-400"
+          className="h-8 w-8 min-[1150px]:w-auto min-[1150px]:px-3 p-0 gap-1.5 border-green-500/40 hover:border-green-500 hover:bg-green-500/10 text-green-400"
           onClick={() => {
             const code = generateVerilog(circuitType, numFlipFlops)
             const fname = `${circuitType.replace(/\s+/g, '_').toLowerCase()}_${numFlipFlops}bit.v`
             downloadVerilog(code, fname)
           }}
+          title="Export Verilog"
         >
           <Download className="h-4 w-4" />
-          Export .v
+          <span className="hidden min-[1150px]:inline">Export .v</span>
         </Button>
 
         {/* Quantum Mode Toggle */}
@@ -206,6 +215,9 @@ export function NavigationBar({ onDebugClick }: NavigationBarProps) {
             <span className="hidden sm:inline">Quantum</span>
           </Button>
         </div>
+
+        {/* Hardware Mode Toggle */}
+
 
         {/* Auth Section */}
         <div className="flex items-center gap-2 border-l border-border pl-3 ml-1">

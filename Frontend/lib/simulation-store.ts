@@ -64,7 +64,6 @@ export interface SimulationState {
   // Phase 8: Backend connection
   simulationId: string | null
   projectId: string | null
-  groqApiKey: string
   backendTimingData: any[]
   
   // Actions
@@ -93,7 +92,6 @@ export interface SimulationState {
   setDelayMs: (delay: number) => void
   setLiveUpdate: (live: boolean) => void
   setProjectId: (id: string | null) => void
-  setGroqApiKey: (key: string) => void
   togglePause: () => void
   stopSimulation: () => void
   _intervalId?: NodeJS.Timeout | null
@@ -111,6 +109,13 @@ export interface SimulationState {
   // Feature: Glitch Simulation
   glitchMode: boolean
   setGlitchMode: (enabled: boolean) => void
+
+  // Feature: Hardware Integration
+  hardwareConnected: boolean
+  hardwareMode: boolean
+  setHardwareConnected: (connected: boolean) => void
+  setHardwareMode: (mode: boolean) => void
+  receiveHardwareState: (states: number[]) => void
 }
 
 const initialFlipFlops = (count: number): FlipFlopState[] => 
@@ -156,7 +161,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   
   simulationId: null,
   projectId: null,
-  groqApiKey: typeof window !== 'undefined' ? localStorage.getItem('groqApiKey') || '' : '',
   backendTimingData: [],
 
   // Quantum Mode
@@ -166,8 +170,23 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   // Glitch Mode
   glitchMode: false,
+
+  // Hardware Integration
+  hardwareConnected: false,
+  hardwareMode: false,
   
   // Actions
+  setHardwareConnected: (connected) => set({ hardwareConnected: connected }),
+  setHardwareMode: (mode) => set({ hardwareMode: mode }),
+  receiveHardwareState: (states) => set((state) => {
+    const newFlipFlops = state.flipFlops.map((ff, i) => ({
+      ...ff,
+      q: states[i] ?? 0,
+      qBar: 1 - (states[i] ?? 0)
+    }))
+    return { flipFlops: newFlipFlops }
+  }),
+
   setCircuitType: (type) => set({ circuitType: type }),
   
   setNumFlipFlops: (num) => set({ 
@@ -194,7 +213,19 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   
   setSimulationCycles: (cycles) => set({ simulationCycles: cycles }),
   
-  setInputBitSequence: (seq) => set({ inputBitSequence: seq }),
+  setInputBitSequence: (seq) => {
+    set({ inputBitSequence: seq })
+    const state = get()
+    if (state.hardwareMode) {
+      import('@/utils/serial').then(({ serialManager }) => {
+        serialManager.send({ 
+          type: 'INPUT_UPDATE', 
+          inputs: seq.split('').map(Number),
+          clock: 1 
+        })
+      })
+    }
+  },
   
   togglePropagationDelay: () => set((state) => ({ 
     showPropagationDelay: !state.showPropagationDelay 
@@ -282,6 +313,15 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   
   stepClock: () => {
     const state = get()
+    
+    if (state.hardwareMode) {
+      // Hardware mode: defer to Arduino
+      import('@/utils/serial').then(({ serialManager }) => {
+        serialManager.send({ type: 'STEP' })
+      })
+      return
+    }
+
     if (state.currentCycle >= state.backendTimingData.length) {
       // Simulation finished
       const { _intervalId } = get()
@@ -362,13 +402,6 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
 
   setProjectId: (id) => set({ projectId: id }),
 
-  setGroqApiKey: (key) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('groqApiKey', key)
-    }
-    set({ groqApiKey: key })
-  },
-  
   togglePause: () => set((state) => ({ isPaused: !state.isPaused })),
   
   stopSimulation: () => {
@@ -380,22 +413,46 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   // Quantum Mode actions
   toggleQuantumMode: () => set((state) => ({ quantumMode: !state.quantumMode })),
 
-  applyHadamard: () => set((state) => {
-    const { qubitAlpha: a, qubitBeta: b } = state
-    const sq2 = Math.sqrt(2)
-    return { qubitAlpha: (a + b) / sq2, qubitBeta: (a - b) / sq2 }
-  }),
+  applyHadamard: () => {
+    set((state) => {
+      const { qubitAlpha: a, qubitBeta: b } = state
+      const sq2 = Math.sqrt(2)
+      return { qubitAlpha: (a + b) / sq2, qubitBeta: (a - b) / sq2 }
+    })
+    const state = get()
+    if (state.hardwareMode) {
+      import('@/utils/serial').then(({ serialManager }) => {
+        serialManager.send({ type: 'QUANTUM_UPDATE', alpha: state.qubitAlpha, beta: state.qubitBeta })
+      })
+    }
+  },
 
-  applyPauliX: () => set((state) => ({
-    qubitAlpha: state.qubitBeta,
-    qubitBeta: state.qubitAlpha,
-  })),
+  applyPauliX: () => {
+    set((state) => ({
+      qubitAlpha: state.qubitBeta,
+      qubitBeta: state.qubitAlpha,
+    }))
+    const state = get()
+    if (state.hardwareMode) {
+      import('@/utils/serial').then(({ serialManager }) => {
+        serialManager.send({ type: 'QUANTUM_UPDATE', alpha: state.qubitAlpha, beta: state.qubitBeta })
+      })
+    }
+  },
 
   measureQubit: () => {
-    const { qubitAlpha } = get()
+    const { qubitAlpha, hardwareMode } = get()
     const prob0 = qubitAlpha * qubitAlpha
     const result = Math.random() < prob0 ? 0 : 1
+    
     set({ qubitAlpha: result === 0 ? 1 : 0, qubitBeta: result === 0 ? 0 : 1 })
+    
+    if (hardwareMode) {
+      import('@/utils/serial').then(({ serialManager }) => {
+        serialManager.send({ type: 'MEASURE', collapsedState: result })
+      })
+    }
+    
     return result
   },
 
