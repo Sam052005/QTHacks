@@ -36,8 +36,8 @@ export class ChallengeService {
     // ── CRITERION 1: Circuit Type ─────────────────────────────────────
     if (testCriteria.circuitType) {
       maxScore += 40;
-      const circuitMatch = simulation.circuitType.toLowerCase().replace(/[- ]/g, '') ===
-        testCriteria.circuitType.toLowerCase().replace(/[- ]/g, '');
+      const circuitMatch = simulation.circuitType.toLowerCase().replace(/[^a-z0-9]/g, '') ===
+        testCriteria.circuitType.toLowerCase().replace(/[^a-z0-9]/g, '');
       details.circuitType = { expected: testCriteria.circuitType, actual: simulation.circuitType, passed: circuitMatch };
       if (circuitMatch) score += 40;
     }
@@ -82,6 +82,11 @@ export class ChallengeService {
 
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
     const success = percentage >= 80;
+
+    console.log(`[CHALLENGE EVAL] Challenge: ${challengeId}`);
+    console.log(`[CHALLENGE EVAL] Target Type: "${testCriteria.circuitType}", Actual Type: "${simulation.circuitType}"`);
+    console.log(`[CHALLENGE EVAL] Scores: ${score}/${maxScore} -> ${percentage}%`);
+    console.log(`[CHALLENGE EVAL] Detail Passed:`, Object.entries(details).map(([k, v]) => `${k}: ${v.passed}`));
 
     return {
       success,

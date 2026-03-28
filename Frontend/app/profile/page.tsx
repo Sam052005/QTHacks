@@ -5,7 +5,17 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { useAuthStore } from '@/lib/auth-store'
-import { User, LogOut, BookOpen, Calendar, Plus, Folder, Clock } from 'lucide-react'
+import { User, LogOut, BookOpen, Calendar, Plus, Folder, Clock, Trash2, X, HelpCircle } from 'lucide-react'
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogFooter,
+  DialogDescription
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
 
 interface Project {
   id: string;
@@ -16,8 +26,11 @@ interface Project {
 export default function ProfilePage() {
   const { user, token, logout } = useAuthStore()
   const router = useRouter()
-  const [projects, setProjects] = useState<Project[]>([])
+   const [projects, setProjects] = useState<Project[]>([])
   const [isCreating, setIsCreating] = useState(false)
+  const [isNamingDialogOpen, setIsNamingDialogOpen] = useState(false)
+  const [projectName, setProjectName] = useState('')
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) {
@@ -39,8 +52,13 @@ export default function ProfilePage() {
     return null
   }
 
-  const handleStartProject = async () => {
-    if (!token) return
+  const handleStartProjectClick = () => {
+    setProjectName('')
+    setIsNamingDialogOpen(true)
+  }
+
+  const confirmCreateProject = async () => {
+    if (!token || !projectName.trim()) return
     setIsCreating(true)
     try {
       const res = await fetch('http://localhost:3001/api/projects/create', {
@@ -49,17 +67,43 @@ export default function ProfilePage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}` 
         },
-        body: JSON.stringify({ name: 'New Logic Workspace' })
+        body: JSON.stringify({ name: projectName.trim() })
       })
       const data = await res.json()
       if (data.project) {
-        // Send them to the simulator with this context
+        toast.success('Project created!')
         router.push(`/?projectId=${data.project.id}`)
       }
     } catch (e) {
       console.error(e)
+      toast.error('Failed to create project')
     } finally {
       setIsCreating(false)
+      setIsNamingDialogOpen(false)
+    }
+  }
+
+  const handleDeleteProject = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
+    if (!token || !window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) return
+    
+    setDeletingId(id)
+    try {
+      const res = await fetch(`http://localhost:3001/api/projects/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setProjects(projects.filter(p => p.id !== id))
+        toast.success('Project deleted')
+      } else {
+        throw new Error('Delete failed')
+      }
+    } catch (e) {
+      console.error(e)
+      toast.error('Failed to delete project')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -98,6 +142,10 @@ export default function ProfilePage() {
               <Button variant="outline" onClick={() => router.push('/')}>
                 Guest Simulator
               </Button>
+              <Button variant="secondary" className="gap-2" onClick={() => router.push('/guide')}>
+                <HelpCircle className="w-4 h-4" />
+                Feature Guide
+              </Button>
               <Button variant="destructive" className="gap-2" onClick={() => {
                 logout()
                 router.push('/login')
@@ -116,7 +164,7 @@ export default function ProfilePage() {
               <CardTitle className="text-2xl">My Projects</CardTitle>
               <CardDescription>Manage your sequential logic simulator workspaces</CardDescription>
             </div>
-            <Button onClick={handleStartProject} disabled={isCreating} className="gap-2 shadow-lg shadow-primary/20">
+            <Button onClick={handleStartProjectClick} disabled={isCreating} className="gap-2 shadow-lg shadow-primary/20">
               <Plus className="w-4 h-4" />
               Start a Project
             </Button>
@@ -129,7 +177,7 @@ export default function ProfilePage() {
                 <p className="text-sm text-muted-foreground max-w-[250px] mt-2 mb-6">
                   Create your first workspace to start building logic circuits with AI assistance tracking your progress.
                 </p>
-                <Button onClick={handleStartProject} disabled={isCreating} variant="secondary" className="gap-2">
+                <Button onClick={handleStartProjectClick} disabled={isCreating} variant="secondary" className="gap-2">
                   <Plus className="w-4 h-4" />
                   Create First Project
                 </Button>
@@ -146,9 +194,24 @@ export default function ProfilePage() {
                       <div className="p-2 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
                         <Folder className="w-5 h-5 text-primary" />
                       </div>
-                      <div className="flex items-center text-xs text-muted-foreground gap-1">
-                        <Clock className="w-3 h-3" />
-                        {new Date(project.updatedAt).toLocaleDateString()}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center text-xs text-muted-foreground gap-1">
+                          <Clock className="w-3 h-3" />
+                          {new Date(project.updatedAt).toLocaleDateString()}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          disabled={deletingId === project.id}
+                          onClick={(e) => handleDeleteProject(e, project.id)}
+                        >
+                          {deletingId === project.id ? (
+                            <div className="h-3 w-3 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
                       </div>
                     </div>
                     <h3 className="font-semibold text-foreground truncate">{project.name}</h3>
@@ -161,8 +224,41 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
-
       </div>
+
+      {/* Naming Dialog */}
+      <Dialog open={isNamingDialogOpen} onOpenChange={setIsNamingDialogOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-primary/20">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Name Your Project</DialogTitle>
+            <DialogDescription>
+              Give your new logic workspace a descriptive name to stay organized.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="e.g., 4-bit Shift Register"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && confirmCreateProject()}
+              autoFocus
+              className="bg-secondary/50 border-primary/10 focus-visible:ring-primary/30"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsNamingDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmCreateProject} 
+              disabled={isCreating || !projectName.trim()}
+              className="px-6"
+            >
+              {isCreating ? 'Creating...' : 'Launch Workspace'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

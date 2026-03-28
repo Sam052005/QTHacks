@@ -9,7 +9,7 @@ export function detectCircuitFromGraph(nodes: Node[], edges: Edge[]): string {
   )
   const n = ffNodes.length
 
-  if (n === 0) return 'Custom Circuit'
+  if (n === 0) return '0-bit Custom Circuit'
 
   // Build adjacency: ffId -> next ffId via Q output
   const qEdges = edges.filter(e => e.sourceHandle === 'q' || !e.sourceHandle)

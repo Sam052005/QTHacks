@@ -79,17 +79,24 @@ export function CircuitLibrary() {
   } = useSimulationStore()
 
   const loadPreset = async (preset: CircuitPreset) => {
+    // 1. Update circuit parameters
     setCircuitType(preset.circuitType)
     setNumFlipFlops(preset.numFlipFlops)
     setInputBitSequence(preset.inputSequence)
     setSimulationCycles(preset.cycles)
+    
+    // 2. Generate the 2D layout nodes and edges for the builder
+    const { generateNodesForCircuit } = useSimulationStore.getState()
+    generateNodesForCircuit(preset.circuitType, preset.numFlipFlops)
+    
+    // 3. Reset internal simulation state
     resetSimulation()
+    
+    // 4. Switch to Simulation view
     setTabActive('Simulation')
     
-    // Small delay to ensure state propagates before starting
-    setTimeout(() => {
-      startSimulation()
-    }, 100)
+    // 5. Autostart the simulation for feedback
+    startSimulation()
   }
 
   const copyPresetCode = (preset: CircuitPreset) => {

@@ -5,6 +5,8 @@ import { BarChart, Bar, PieChart, Pie, AreaChart, Area, LineChart, Line, XAxis, 
 import { Card } from '@/components/ui/card'
 import { useSimulationStore } from '@/lib/simulation-store'
 import { RealWorldPanel } from './real-world-panel'
+import { TruthTablePanel } from './truth-table-panel'
+import { Binary } from 'lucide-react'
 
 const COLORS = ['#22c55e', '#3b82f6', '#f97316', '#a855f7', '#ec4899']
 
@@ -34,15 +36,16 @@ export function AnalysisPanel() {
   const stateTransitions = useMemo(() => {
     const states: Record<string, number> = {}
     timingData.forEach((point) => {
-      const stateStr = flipFlops.map(() => '0|1').join('')
+      // Correctly format the state string from outputs array
+      const stateStr = Array.isArray(point.outputs) ? point.outputs.join('') : 'Unknown'
       states[stateStr] = (states[stateStr] || 0) + 1
     })
-    return Object.entries(states).map(([state, count], idx) => ({
-      cycle: idx,
-      state: `State ${idx}`,
+    return Object.entries(states).map(([state, count]) => ({
+      state,
       count,
-    }))
-  }, [timingData, flipFlops])
+      percentage: timingData.length > 0 ? (count / timingData.length) * 100 : 0,
+    })).sort((a, b) => b.count - a.count)
+  }, [timingData])
 
   // Signal frequency distribution
   const signalDistribution = useMemo(() => {
@@ -68,26 +71,61 @@ export function AnalysisPanel() {
     }))
   }, [currentCycle])
 
-  // Output frequency by flip-flop
+  // Output frequency (toggles per cycle) by flip-flop
   const outputFrequency = useMemo(() => {
-    return flipFlops.map((_, idx) => {
-      const ones = timingData.filter((point) => point.outputs[idx] === 1).length
+    // Determine the number of output signals to track
+    // Use the maximum of store's flipFlop count and actual data in timingData
+    const dataOutputCount = timingData[0]?.outputs?.length || 0
+    const count = Math.max(flipFlops.length, dataOutputCount)
+    
+    if (count === 0) return []
+
+    return Array.from({ length: count }).map((_, idx) => {
+      let transitions = 0
+      let validDataPoints = 0
+      
+      for (let i = 1; i < timingData.length; i++) {
+        const prev = timingData[i-1].outputs?.[idx]
+        const curr = timingData[i].outputs?.[idx]
+        
+        if (prev !== undefined && curr !== undefined) {
+          validDataPoints++
+          // Count 0 -> 1 transitions (positive edges)
+          if (prev === 0 && curr === 1) {
+            transitions++
+          }
+        }
+      }
+      
+      const ones = timingData.filter((point) => point.outputs?.[idx] === 1).length
+      
+      const totalPoints = timingData.length
       return {
         name: `Q${idx + 1}`,
-        'High (1)': ones,
-        'Low (0)': timingData.length - ones,
-        percentage: timingData.length > 0 ? (ones / timingData.length) * 100 : 0,
+        'Transitions': transitions,
+        'High %': totalPoints > 0 ? (ones / totalPoints) * 100 : 0,
+        // Relative frequency (normalized to 0-100 range for the chart)
+        relativeFreq: totalPoints > 1 ? (transitions / (totalPoints / 2)) * 100 : 0
       }
     })
   }, [timingData, flipFlops])
 
   // Circuit statistics
   const statistics = useMemo(() => {
+    let totalTransitions = 0
+    flipFlops.forEach((_, idx) => {
+      for (let i = 1; i < timingData.length; i++) {
+        if (timingData[i-1].outputs[idx] === 0 && timingData[i].outputs[idx] === 1) {
+          totalTransitions++
+        }
+      }
+    })
+    
     return {
       totalCycles: currentCycle,
-      clockPulses: currentCycle,
-      uniqueStates: new Set(timingData.map((t) => JSON.stringify(t.outputs))).size,
-      averageFrequency: flipFlops.length > 0 ? (currentCycle / flipFlops.length).toFixed(2) : '0',
+      clockPulses: timingData.length,
+      uniqueStates: new Set(timingData.map((t) => Array.isArray(t.outputs) ? t.outputs.join('') : JSON.stringify(t.outputs))).size,
+      averageFrequency: timingData.length > 0 ? (totalTransitions / timingData.length).toFixed(2) : '0',
     }
   }, [currentCycle, timingData, flipFlops])
 
@@ -156,20 +194,33 @@ export function AnalysisPanel() {
         </Card>
 
         {/* Output Frequency - Bar Chart */}
-        <Card className="p-4 bg-card border-border">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Output Frequency by Flip-Flop</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={outputFrequency}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-              <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" />
-              <YAxis stroke="rgba(255,255,255,0.5)" />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155' }}
-                formatter={(value) => `${((value as number) || 0).toFixed(1)}%`}
-              />
-              <Bar dataKey="percentage" fill="#22c55e" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <Card className="p-4 bg-card border-border min-h-[300px] flex flex-col">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-semibold text-foreground">Output Dynamics by Flip-Flop</h3>
+            <span className="text-[10px] text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Toggles & Duty Cycle</span>
+          </div>
+          {outputFrequency.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={outputFrequency}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+                <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" />
+                <YAxis stroke="rgba(255,255,255,0.5)" />
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                  itemStyle={{ fontSize: '12px' }}
+                />
+                <Legend verticalAlign="top" align="right" iconType="circle" />
+                <Bar name="Duty Cycle %" dataKey="High %" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar name="Freq Switch %" dataKey="relativeFreq" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center space-y-2 border-2 border-dashed border-muted/20 rounded-xl">
+              <div className="text-xs text-muted-foreground w-48 italic">
+                No output data available yet. Please run the simulation to see flip-flop analytics.
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -227,19 +278,23 @@ export function AnalysisPanel() {
             <tbody>
               {stateTransitions.slice(0, 8).map((row, idx) => (
                 <tr key={idx} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                  <td className="px-3 py-2 text-foreground">{idx}</td>
-                  <td className="px-3 py-2 text-foreground font-mono">{row.state}</td>
-                  <td className="text-right px-3 py-2 text-foreground">{row.count}</td>
+                  <td className="px-3 py-2 text-foreground">{idx + 1}</td>
+                  <td className="px-3 py-2 text-foreground">
+                    <span className="font-mono bg-secondary px-2 py-0.5 rounded text-primary">
+                      {row.state}
+                    </span>
+                  </td>
+                  <td className="text-right px-3 py-2 text-foreground font-mono">{row.count}</td>
                   <td className="text-right px-3 py-2">
                     <div className="flex items-center justify-end gap-2">
                       <div className="w-16 h-1 bg-secondary rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-primary rounded-full"
-                          style={{ width: `${(row.count / Math.max(...stateTransitions.map((r) => r.count), 1)) * 100}%` }}
+                          className="h-full bg-primary rounded-full transition-all duration-500"
+                          style={{ width: `${row.percentage}%` }}
                         />
                       </div>
                       <span className="text-muted-foreground min-w-10 text-right">
-                        {timingData.length > 0 ? (((row.count / timingData.length) * 100).toFixed(1)) : '0'}%
+                        {row.percentage.toFixed(1)}%
                       </span>
                     </div>
                   </td>
@@ -255,8 +310,24 @@ export function AnalysisPanel() {
         )}
       </Card>
 
+      {/* NEW: Truth Table Analysis */}
+      <Card className="border-border/60 shadow-xl bg-card/50 backdrop-blur-sm overflow-hidden border-t-4 border-t-primary mb-6">
+        <div className="p-4 border-b border-border/40 bg-secondary/20 flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-primary/15 text-primary">
+            <Binary className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold tracking-tight text-foreground lowercase">Cycle History Analysis</h3>
+            <p className="text-xs text-muted-foreground">Complete trace of all internal and external signals</p>
+          </div>
+        </div>
+        <div className="p-6">
+          <TruthTablePanel />
+        </div>
+      </Card>
+
       {/* Real-World Mapping Section */}
-      <Card className="border-border bg-card">
+      <Card className="border-border bg-card/40 border-dashed">
         <RealWorldPanel />
       </Card>
     </div>

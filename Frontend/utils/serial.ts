@@ -53,8 +53,12 @@ class SerialManager {
       });
 
       return true;
-    } catch (error) {
-      console.error('Failed to connect to hardware:', error);
+    } catch (error: any) {
+      if (error.name === 'NotFoundError' || error.name === 'AbortError') {
+        console.log('Hardware connection cancelled by user.');
+      } else {
+        console.error('Failed to connect to hardware:', error);
+      }
       return false;
     }
   }

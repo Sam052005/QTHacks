@@ -95,6 +95,15 @@ export interface SimulationState {
   togglePause: () => void
   stopSimulation: () => void
   _intervalId?: NodeJS.Timeout | null
+  toggleInputBit: (index?: number) => void
+  refreshSimulation: () => Promise<void>
+  
+  // Graph state
+  nodes: any[]
+  edges: any[]
+  setNodes: (nodes: any[] | ((nds: any[]) => any[])) => void
+  setEdges: (edges: any[] | ((eds: any[]) => any[])) => void
+  generateNodesForCircuit: (type: CircuitType, num: number) => void
 
   // Feature: Quantum Mode
   quantumMode: boolean
@@ -116,6 +125,25 @@ export interface SimulationState {
   setHardwareConnected: (connected: boolean) => void
   setHardwareMode: (mode: boolean) => void
   receiveHardwareState: (states: number[]) => void
+  
+  // Advanced Quantum Features
+  isMeasured: boolean
+  measurementResult: number | null
+  quantumNoise: number
+  isEntangled: boolean
+  qubit2Alpha: number
+  qubit2Beta: number
+  setQuantumNoise: (noise: number) => void
+  toggleEntanglement: () => void
+  performMeasurement: () => void
+
+  // Phase 31: Advanced Quantum Phase 2
+  qubitHistory: { alpha: number; beta: number }[]
+  activeGatePulse: boolean
+  triggerGatePulse: () => void
+  applyZGate: () => void
+  applySGate: () => void
+  applyTGate: () => void
 }
 
 const initialFlipFlops = (count: number): FlipFlopState[] => 
@@ -142,6 +170,10 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   currentCycle: 0,
   flipFlops: initialFlipFlops(4),
   timingData: [],
+  
+  // Graph persistence
+  nodes: [],
+  edges: [],
   
   showPropagationDelay: true,
   showSignalFlow: true,
@@ -175,6 +207,18 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   hardwareConnected: false,
   hardwareMode: false,
   
+  // Advanced Quantum
+  isMeasured: false,
+  measurementResult: null,
+  quantumNoise: 0,
+  isEntangled: false,
+  qubit2Alpha: 1,
+  qubit2Beta: 0,
+  
+  // Phase 31 Defaults
+  qubitHistory: [],
+  activeGatePulse: false,
+  
   // Actions
   setHardwareConnected: (connected) => set({ hardwareConnected: connected }),
   setHardwareMode: (mode) => set({ hardwareMode: mode }),
@@ -193,6 +237,84 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     numFlipFlops: num, 
     flipFlops: initialFlipFlops(num) 
   }),
+
+  toggleInputBit: (index) => {
+    const { inputBitSequence, currentCycle, setInputBitSequence, isRunning, refreshSimulation } = get()
+    // If running, we toggle at currentCycle. If not, we might want to toggle at index 0 or specific index.
+    const targetIndex = index !== undefined ? index : currentCycle
+    
+    let seq = inputBitSequence
+    // Ensure the sequence is long enough
+    if (targetIndex >= seq.length) {
+      seq = seq.padEnd(targetIndex + 1, '0')
+    }
+    
+    const bit = seq[targetIndex] === '1' ? '0' : '1'
+    const newSeq = seq.substring(0, targetIndex) + bit + seq.substring(targetIndex + 1)
+    
+    set({ inputBitSequence: newSeq })
+    
+    // Update hardware if needed
+    const state = get()
+    if (state.hardwareMode) {
+      import('@/utils/serial').then(({ serialManager }) => {
+        serialManager.send({ 
+          type: 'INPUT_UPDATE', 
+          inputs: newSeq.split('').map(Number),
+          clock: 1 
+        })
+      })
+    }
+
+    if (isRunning) {
+      refreshSimulation()
+    }
+  },
+
+  refreshSimulation: async () => {
+    const state = get()
+    const { circuitType, numFlipFlops, clockFrequency, inputBitSequence, simulationCycles } = state
+    
+    const typeMap: Record<string, string> = {
+      'D Flip-Flop': 'D_FLIP_FLOP',
+      'JK Flip-Flop': 'JK_FLIP_FLOP',
+      'T Flip-Flop': 'T_FLIP_FLOP',
+      'Shift Register': 'SHIFT_REGISTER',
+      'Ring Counter': 'RING_COUNTER',
+      'Johnson Counter': 'JOHNSON_COUNTER'
+    }
+
+    try {
+      const res = await fetch('http://localhost:3001/api/simulations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          circuitType: typeMap[circuitType] || 'SHIFT_REGISTER',
+          numFlipFlops,
+          clockFrequency,
+          inputSequence: inputBitSequence.split('').map(Number)
+        })
+      })
+      const sim = await res.json()
+      
+      const runRes = await fetch(`http://localhost:3001/api/simulations/${sim.id}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cycles: simulationCycles })
+      })
+      const runData = await runRes.json()
+      
+      const timingList = runData.timingData || []
+      timingList.sort((a: any, b: any) => a.cycle - b.cycle)
+      
+      set({ 
+        simulationId: sim.id,
+        backendTimingData: timingList
+      })
+    } catch (e) {
+      console.error("Refresh Backend Error: ", e)
+    }
+  },
   
   setClockFrequency: (freq) => {
     set({ clockFrequency: freq })
@@ -242,6 +364,122 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   
   setTabActive: (tab) => set({ tabActive: tab }),
+
+  setNodes: (nodes) => {
+    if (typeof nodes === 'function') {
+      set({ nodes: nodes(get().nodes) })
+    } else {
+      set({ nodes })
+    }
+  },
+
+  setEdges: (edges) => {
+    if (typeof edges === 'function') {
+      set({ edges: edges(get().edges) })
+    } else {
+      set({ edges })
+    }
+  },
+
+  generateNodesForCircuit: (type, num) => {
+    const nodes: any[] = []
+    const edges: any[] = []
+    
+    // Position constants
+    const startX = 100
+    const startY = 100
+    const ffSpacingX = 250
+    const ffSpacingY = 100
+
+    // Add Clock
+    nodes.push({
+      id: 'clock-main',
+      type: 'clock',
+      position: { x: startX, y: startY + 150 },
+      data: { label: 'Main Clock' }
+    })
+
+    // Add Input
+    nodes.push({
+      id: 'input-main',
+      type: 'input',
+      position: { x: startX, y: startY + 50 },
+      data: { label: 'Serial Input' }
+    })
+
+    // Add Flip-Flops
+    const ffType = type.includes('JK') ? 'jkFlipFlop' : (type.includes('T') ? 'tFlipFlop' : 'dFlipFlop')
+    const ffLabel = type.includes('JK') ? 'JK-FF' : (type.includes('T') ? 'T-FF' : 'D-FF')
+
+    for (let i = 0; i < num; i++) {
+      nodes.push({
+        id: `ff-${i}`,
+        type: ffType,
+        position: { x: startX + 200 + i * ffSpacingX, y: startY + 50 },
+        data: { label: `${ffLabel} ${i}` }
+      })
+
+      // Connect Clock to all FFs
+      edges.push({
+        id: `e-clk-${i}`,
+        source: 'clock-main',
+        target: `ff-${i}`,
+        targetHandle: 'clk',
+        animated: false
+      })
+
+      // Connections between FFs
+      if (i > 0) {
+        if (type === 'Shift Register' || type === 'Ring Counter' || type === 'Johnson Counter' || 
+            type === 'D Flip-Flop' || type === 'JK Flip-Flop' || type === 'T Flip-Flop') {
+          edges.push({
+            id: `e-ff-${i-1}-${i}`,
+            source: `ff-${i-1}`,
+            sourceHandle: 'q',
+            target: `ff-${i}`,
+            targetHandle: type.includes('JK') ? 'j' : (type.includes('T') ? 't' : 'd'),
+            animated: false
+          })
+        }
+      }
+    }
+
+    // Input to first FF
+    if (num > 0 && (type === 'Shift Register' || type === 'D Flip-Flop' || type === 'JK Flip-Flop' || type === 'T Flip-Flop')) {
+      edges.push({
+        id: 'e-in-ff0',
+        source: 'input-main',
+        target: 'ff-0',
+        targetHandle: type.includes('JK') ? 'j' : (type.includes('T') ? 't' : 'd'),
+        animated: false
+      })
+    }
+
+    // Feedback for Counters
+    if (num > 1) {
+      if (type === 'Ring Counter') {
+        edges.push({
+          id: 'e-feedback-ring',
+          source: `ff-${num-1}`,
+          sourceHandle: 'q',
+          target: 'ff-0',
+          targetHandle: type.includes('JK') ? 'j' : (type.includes('T') ? 't' : 'd'),
+          animated: false
+        })
+      } else if (type === 'Johnson Counter') {
+        edges.push({
+          id: 'e-feedback-johnson',
+          source: `ff-${num-1}`,
+          sourceHandle: 'qbar',
+          target: 'ff-0',
+          targetHandle: type.includes('JK') ? 'j' : (type.includes('T') ? 't' : 'd'),
+          animated: false
+        })
+      }
+    }
+
+    set({ nodes, edges })
+  },
   
   startSimulation: async () => {
     const state = get()
@@ -414,11 +652,15 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   toggleQuantumMode: () => set((state) => ({ quantumMode: !state.quantumMode })),
 
   applyHadamard: () => {
-    set((state) => {
-      const { qubitAlpha: a, qubitBeta: b } = state
-      const sq2 = Math.sqrt(2)
-      return { qubitAlpha: (a + b) / sq2, qubitBeta: (a - b) / sq2 }
+    const { qubitAlpha: a, qubitBeta: b, qubitHistory } = get()
+    const sq2 = Math.sqrt(2)
+    set({ 
+      qubitAlpha: (a + b) / sq2, 
+      qubitBeta: (a - b) / sq2,
+      qubitHistory: [...qubitHistory.slice(-49), { alpha: a, beta: b }]
     })
+    get().triggerGatePulse()
+    // ... hardware sync
     const state = get()
     if (state.hardwareMode) {
       import('@/utils/serial').then(({ serialManager }) => {
@@ -428,10 +670,14 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   applyPauliX: () => {
-    set((state) => ({
-      qubitAlpha: state.qubitBeta,
-      qubitBeta: state.qubitAlpha,
-    }))
+    const { qubitAlpha: a, qubitBeta: b, qubitHistory } = get()
+    set({
+      qubitAlpha: b,
+      qubitBeta: a,
+      qubitHistory: [...qubitHistory.slice(-49), { alpha: a, beta: b }]
+    })
+    get().triggerGatePulse()
+    // ... hardware sync
     const state = get()
     if (state.hardwareMode) {
       import('@/utils/serial').then(({ serialManager }) => {
@@ -456,7 +702,68 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     return result
   },
 
-  resetQubit: () => set({ qubitAlpha: 1, qubitBeta: 0 }),
+  resetQubit: () => set({ 
+    qubitAlpha: 1, 
+    qubitBeta: 0, 
+    isMeasured: false, 
+    measurementResult: null,
+    isEntangled: false,
+    qubitHistory: []
+  }),
+
+  setQuantumNoise: (noise) => set({ quantumNoise: noise }),
+  
+  toggleEntanglement: () => set((state) => ({ 
+    isEntangled: !state.isEntangled,
+    qubit2Alpha: 1,
+    qubit2Beta: 0
+  })),
+
+  performMeasurement: () => {
+    const { measureQubit } = get()
+    const result = measureQubit()
+    set({ isMeasured: true, measurementResult: result })
+    
+    // Auto-reset "isMeasured" after a delay to allow re-simulation
+    setTimeout(() => {
+      set({ isMeasured: false })
+    }, 2000)
+  },
+
+  // Phase 31 Actions
+  triggerGatePulse: () => {
+    set({ activeGatePulse: true })
+    setTimeout(() => set({ activeGatePulse: false }), 400)
+  },
+
+  applyZGate: () => {
+    const { qubitAlpha: a, qubitBeta: b, qubitHistory } = get()
+    set({ 
+      qubitBeta: -b,
+      qubitHistory: [...qubitHistory.slice(-49), { alpha: a, beta: b }]
+    })
+    get().triggerGatePulse()
+  },
+
+  applySGate: () => {
+    const { qubitAlpha: a, qubitBeta: b, qubitHistory } = get()
+    // S gate is a 90-degree phase shift (i)
+    // We'll simulate this by adding a small offset to visually distinguish from Z
+    set({ 
+      qubitBeta: b === 0 ? 0.1 : -b * 1.1, 
+      qubitHistory: [...qubitHistory.slice(-49), { alpha: a, beta: b }]
+    })
+    get().triggerGatePulse()
+  },
+
+  applyTGate: () => {
+    const { qubitAlpha: a, qubitBeta: b, qubitHistory } = get()
+    set({ 
+      qubitBeta: b === 0 ? 0.05 : -b * 0.9,
+      qubitHistory: [...qubitHistory.slice(-49), { alpha: a, beta: b }]
+    })
+    get().triggerGatePulse()
+  },
 
   // Glitch Mode
   setGlitchMode: (enabled) => set({ glitchMode: enabled }),

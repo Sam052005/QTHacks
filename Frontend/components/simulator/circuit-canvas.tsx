@@ -14,12 +14,20 @@ import { SimulationControls } from './simulation-controls'
 // Replaced ClockGenerator and FlipFlopModule with ClockPulse and ShiftRegisterVisual
 
 function InputSource({ position }: { position: [number, number, number] }) {
-  const { inputBitSequence, currentCycle } = useSimulationStore()
+  const { inputBitSequence, currentCycle, toggleInputBit } = useSimulationStore()
   const currentBit = parseInt(inputBitSequence[currentCycle % inputBitSequence.length] || '0')
   const isActive = currentBit === 1
 
   return (
-    <group position={position}>
+    <group 
+      position={position} 
+      onClick={(e) => {
+        e.stopPropagation()
+        toggleInputBit()
+      }}
+      onPointerOver={() => { document.body.style.cursor = 'pointer' }}
+      onPointerOut={() => { document.body.style.cursor = 'auto' }}
+    >
       <RoundedBox args={[0.8, 0.8, 0.3]} radius={0.05} castShadow>
         <meshPhysicalMaterial
           color={isActive ? '#10b981' : '#1e3a5f'}
@@ -106,23 +114,26 @@ function Scene() {
       <GridFloor />
 
       {/* Clock generator */}
-      <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
-        <ClockPulse position={[startX - 3.5, 0, 0]} />
-      </Float>
+      {flipFlops.length > 0 && (
+        <>
+          <Float speed={2} rotationIntensity={0.1} floatIntensity={0.2}>
+            <ClockPulse position={[startX - 3.5, 0, 0]} />
+          </Float>
 
-      {/* Input source */}
-      <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
-        <InputSource position={[startX - 1.5, 0.8, 0]} />
-      </Float>
+          {/* Input source */}
+          <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
+            <InputSource position={[startX - 1.5, 0.8, 0]} />
+          </Float>
 
-
-      {/* Wire from input to first flip-flop */}
-      <SignalPulse
-        startPosition={[startX - 1, 0.8, 0]}
-        endPosition={[startX - 1, 0.15, 0]}
-        signalValue={currentBit}
-        showPulse={showSignalFlow}
-      />
+          {/* Wire from input to first flip-flop */}
+          <SignalPulse
+            startPosition={[startX - 1, 0.8, 0]}
+            endPosition={[startX - 1, 0.15, 0]}
+            signalValue={currentBit}
+            showPulse={showSignalFlow}
+          />
+        </>
+      )}
 
       {/* Shift Register Flip-Flops and Wires */}
       <ShiftRegisterVisual />

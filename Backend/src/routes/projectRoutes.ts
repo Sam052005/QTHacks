@@ -48,7 +48,12 @@ router.get('/list', authenticate, async (req: Request, res: Response): Promise<v
 router.get('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
-    const projectId = req.params.id;
+    const projectId = req.params.id as string;
+
+    if (!projectId) {
+      res.status(400).json({ error: 'Project ID is required' });
+      return;
+    }
 
     const project = await prisma.project.findUnique({
       where: { id: projectId }
@@ -63,6 +68,38 @@ router.get('/:id', authenticate, async (req: Request, res: Response): Promise<vo
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch project details' });
+  }
+});
+
+// Delete specific project
+router.delete('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    const projectId = req.params.id as string;
+
+    if (!projectId) {
+      res.status(400).json({ error: 'Project ID is required' });
+      return;
+    }
+
+    // Verify ownership before deleting
+    const project = await prisma.project.findUnique({
+      where: { id: projectId }
+    });
+
+    if (!project || project.userId !== userId) {
+      res.status(404).json({ error: 'Project not found or unauthorized' });
+      return;
+    }
+
+    await prisma.project.delete({
+      where: { id: projectId }
+    });
+
+    res.status(200).json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to delete project' });
   }
 });
 

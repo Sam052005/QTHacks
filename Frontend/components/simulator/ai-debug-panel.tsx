@@ -128,6 +128,8 @@ export function AIDebugPanel({ onClose }: DebugPanelProps) {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setIsLoading(true)
 
+    const { nodes, edges } = useSimulationStore.getState()
+
     try {
       const res = await fetch('http://localhost:3001/api/chat/message', {
         method: 'POST',
@@ -145,7 +147,9 @@ export function AIDebugPanel({ onClose }: DebugPanelProps) {
             clockFrequency,
             flipFlops,
             activeSignals,
-            changedComponents: Array.from(changedComponents)
+            changedComponents: Array.from(changedComponents),
+            nodes,
+            edges
           }
         })
       })
