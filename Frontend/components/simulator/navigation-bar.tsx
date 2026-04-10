@@ -51,7 +51,7 @@ export function NavigationBar({ onDebugClick, isChallengeMode = false }: Navigat
   const router = useRouter()
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-card px-2 overflow-hidden">
+    <header className="flex h-14 items-center justify-between bg-card px-2 w-full min-w-max">
       <div className="flex items-center gap-2 flex-shrink-0">
         <div className="flex items-center min-w-[40px]">
           <Image 

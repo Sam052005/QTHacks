@@ -12,6 +12,10 @@ import { ChallengesPanel } from '@/components/simulator/challenges-panel'
 import { QuantumGatesPanel } from '@/components/simulator/quantum-gates-panel'
 import { Button } from '@/components/ui/button'
 import { useSimulationStore } from '@/lib/simulation-store'
+import { HardwareModeBar } from '@/components/hardware/HardwareModeBar'
+import { HardwareMonitor } from '@/components/hardware/HardwareMonitor'
+import { VirtualLEDPanel } from '@/components/hardware/VirtualLEDPanel'
+import { QuantumControls } from '@/components/hardware/QuantumControls'
 
 // Import BrandedHero as dynamic to avoid cache issues
 const BrandedHero = dynamic(
@@ -69,9 +73,12 @@ export default function SimulatorPage() {
   const [showHero, setShowHero] = useState(true)
   const [showControlPanel, setShowControlPanel] = useState(true)
   const [showDebugPanel, setShowDebugPanel] = useState(false)
+  const [showHardwareMonitor, setShowHardwareMonitor] = useState(false)
   const [showTimingDiagram, setShowTimingDiagram] = useState(true)
+  const [showLEDPanel, setShowLEDPanel] = useState(true)
   const [controlPanelWidth, setControlPanelWidth] = useState(280)
   const [timingDiagramHeight, setTimingDiagramHeight] = useState(256)
+  const [ledPanelHeight, setLedPanelHeight] = useState(120)
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -103,7 +110,17 @@ export default function SimulatorPage() {
   return (
     <div className="flex h-screen flex-col bg-background">
       {/* Top Navigation */}
-      <NavigationBar onDebugClick={() => setShowDebugPanel(!showDebugPanel)} />
+      <div className="flex items-center border-b border-border w-full overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex-1 min-w-max">
+          <NavigationBar onDebugClick={() => setShowDebugPanel(!showDebugPanel)} />
+        </div>
+        <div className="shrink-0 px-3 border-l border-border bg-card/50 h-14 flex items-center">
+          <HardwareModeBar
+            onMonitorClick={() => setShowHardwareMonitor(!showHardwareMonitor)}
+            monitorOpen={showHardwareMonitor}
+          />
+        </div>
+      </div>
 
       {/* Branded Hero - Collapsible */}
       {showHero && (
@@ -202,29 +219,32 @@ export default function SimulatorPage() {
 
           {/* Tab Content */}
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {tabActive === 'Simulation' && (
-              <div className="flex flex-1 flex-col min-h-0 overflow-hidden">
-                {/* Quantum Mode — split layout */}
-                {quantumMode ? (
-                  <div className="flex flex-1 overflow-hidden">
-                    {/* Bloch Sphere */}
-                    <div className="flex-1 border-r border-border overflow-hidden">
-                      <BlochSphere />
-                    </div>
-                    {/* Quantum Gates */}
-                    <div className="w-72 shrink-0 overflow-y-auto border-border bg-card">
-                      <QuantumGatesPanel />
-                    </div>
+            <div className={`flex flex-1 flex-col min-h-0 overflow-hidden ${tabActive !== 'Simulation' ? 'hidden' : ''}`}>
+              {/* Quantum Mode — split layout */}
+              <div className={`flex flex-1 overflow-hidden ${!quantumMode ? 'hidden' : ''}`}>
+                <div className="flex-1 border-r border-border overflow-hidden">
+                  <BlochSphere />
+                </div>
+                <div className="w-72 shrink-0 overflow-y-auto border-l border-border bg-card flex flex-col">
+                  <div className="flex-1 overflow-y-auto">
+                    <QuantumGatesPanel />
                   </div>
-                ) : (
-                  <>
-                    <div className="flex-1 overflow-hidden">
-                      {viewMode === 'simulator' ? (
-                        <CircuitCanvas />
-                      ) : (
-                        <CircuitBuilder />
-                      )}
-                    </div>
+                  <div className="shrink-0 p-3 border-t border-border">
+                    <QuantumControls />
+                  </div>
+                </div>
+              </div>
+
+              {/* Classical Mode */}
+              <div className={`flex-1 overflow-hidden flex flex-col ${quantumMode ? 'hidden' : ''}`}>
+                <div className="flex-1 overflow-hidden relative">
+                  <div className={`absolute inset-0 ${viewMode !== 'simulator' ? 'hidden' : ''}`}>
+                    <CircuitCanvas />
+                  </div>
+                  <div className={`absolute inset-0 ${viewMode === 'simulator' ? 'hidden' : ''}`}>
+                    <CircuitBuilder />
+                  </div>
+                </div>
                 
                 {/* Timing Diagram - Sliding & Resizable */}
                 <div 
@@ -267,21 +287,73 @@ export default function SimulatorPage() {
                   </div>
                 </div>
 
-                {/* Restore Timing Diagram Tab */}
-                {!showTimingDiagram && (
-                  <button 
-                    onClick={() => setShowTimingDiagram(true)}
-                    className="h-8 border-t border-border bg-secondary/20 hover:bg-secondary/40 flex items-center justify-center cursor-pointer group transition-colors"
-                  >
-                    <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase group-hover:text-primary">
-                      Timing Diagram
-                    </span>
-                  </button>
-                )}
-              </>
-            )}
+                {/* Virtual LED Panel - Sliding & Resizable */}
+                <div 
+                  className="border-t border-border relative group transition-all duration-300 ease-in-out" 
+                  style={{ height: showLEDPanel ? `${ledPanelHeight}px` : '0px' }}
+                >
+                  {/* Resize Handle (Horizontal) */}
+                  {showLEDPanel && (
+                    <div
+                      onMouseDown={(e) => {
+                        const startY = e.clientY
+                        const startHeight = ledPanelHeight
+                        const handleMouseMove = (moveEvent: MouseEvent) => {
+                          const diff = startY - moveEvent.clientY
+                          setLedPanelHeight(Math.max(80, Math.min(300, startHeight + diff)))
+                        }
+                        const handleMouseUp = () => {
+                          document.removeEventListener('mousemove', handleMouseMove)
+                          document.removeEventListener('mouseup', handleMouseUp)
+                        }
+                        document.addEventListener('mousemove', handleMouseMove)
+                        document.addEventListener('mouseup', handleMouseUp)
+                      }}
+                      className="absolute left-0 right-0 -top-1 h-2 bg-border hover:bg-primary cursor-row-resize z-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                    />
+                  )}
+                  
+                  {/* Collapse Toggle */}
+                  {showLEDPanel && (
+                    <button
+                      onClick={() => setShowLEDPanel(false)}
+                      className="absolute left-1/2 -translate-x-1/2 -top-3 h-3 w-12 bg-secondary border border-border rounded-t flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-50"
+                      title="Collapse LED Panel"
+                    >
+                      <span className="text-[10px] text-muted-foreground leading-none">▾</span>
+                    </button>
+                  )}
+
+                  <div className="h-full w-full overflow-hidden bg-card/50 px-4 py-2">
+                    <VirtualLEDPanel />
+                  </div>
+                </div>
+
+                {/* Restore Tabs (Bottom) */}
+                <div className="flex shrink-0">
+                  {!showTimingDiagram && (
+                    <button 
+                      onClick={() => setShowTimingDiagram(true)}
+                      className="flex-1 h-8 border-t border-border bg-secondary/20 hover:bg-secondary/40 flex items-center justify-center cursor-pointer group transition-colors"
+                    >
+                      <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase group-hover:text-primary">
+                        Timing Diagram
+                      </span>
+                    </button>
+                  )}
+                  {!showLEDPanel && (
+                    <button 
+                      onClick={() => setShowLEDPanel(true)}
+                      className={`flex-1 h-8 border-t border-border bg-secondary/20 hover:bg-secondary/40 flex items-center justify-center cursor-pointer group transition-colors ${!showTimingDiagram ? 'border-l' : ''}`}
+                    >
+                      <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase group-hover:text-primary">
+                        LED Panel
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
 
             {tabActive !== 'Simulation' && (
               <div className="flex-1 overflow-y-auto w-full relative">
@@ -297,6 +369,13 @@ export default function SimulatorPage() {
         {showDebugPanel && (
           <div className="w-80 shrink-0 border-l border-border bg-card overflow-hidden">
             <AIDebugPanel onClose={() => setShowDebugPanel(false)} />
+          </div>
+        )}
+
+        {/* Right Hardware Monitor */}
+        {showHardwareMonitor && (
+          <div className="w-72 shrink-0 border-l border-border bg-card overflow-hidden">
+            <HardwareMonitor onClose={() => setShowHardwareMonitor(false)} />
           </div>
         )}
       </div>

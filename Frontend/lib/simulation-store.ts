@@ -519,13 +519,21 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       const timingList = runData.timingData || []
       timingList.sort((a: any, b: any) => a.cycle - b.cycle)
       
+      const initialOutputs = initialFlipFlops(state.numFlipFlops).map(f => f.q)
+      const initialPoint: TimingPoint = {
+        time: 0,
+        clock: 0,
+        input: Number(state.inputBitSequence[0] || 0),
+        outputs: initialOutputs
+      }
+
       set({ 
         simulationId: sim.id,
         backendTimingData: timingList,
         isRunning: true, 
         isPaused: false,
-        currentCycle: 0,
-        timingData: [],
+        currentCycle: 1, // Start at 1 because 0 is initial
+        timingData: [initialPoint],
         flipFlops: initialFlipFlops(state.numFlipFlops)
       })
 
@@ -589,25 +597,39 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
       outputs
     }
     
+    // Check if we already have this cycle to avoid duplicates during refreshes
+    const exists = state.timingData.some(p => p.time === state.currentCycle)
+    const newTimingData = exists ? state.timingData : [...state.timingData, uiTimingPoint]
+
     set({
       flipFlops: newFlipFlops,
       currentCycle: state.currentCycle + 1,
-      timingData: [...state.timingData, uiTimingPoint],
+      timingData: newTimingData,
     })
   },
   
   resetSimulation: () => {
-    const { _intervalId } = get()
+    const state = get()
+    const { _intervalId } = state
     if (_intervalId) clearInterval(_intervalId)
-    set((state) => ({
+    
+    const initialOutputs = initialFlipFlops(state.numFlipFlops).map(f => f.q)
+    const initialPoint: TimingPoint = {
+      time: 0,
+      clock: 0,
+      input: Number(state.inputBitSequence[0] || 0),
+      outputs: initialOutputs
+    }
+
+    set({
       isRunning: false,
       isPaused: false,
       currentCycle: 0,
       flipFlops: initialFlipFlops(state.numFlipFlops),
-      timingData: [],
+      timingData: [initialPoint],
       activeSignals: [],
       _intervalId: null
-    }))
+    })
   },
   
   updateFlipFlops: (states) => set({ flipFlops: states }),
@@ -687,11 +709,21 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   },
 
   measureQubit: () => {
-    const { qubitAlpha, hardwareMode } = get()
+    const { qubitAlpha, hardwareMode, flipFlops } = get()
     const prob0 = qubitAlpha * qubitAlpha
     const result = Math.random() < prob0 ? 0 : 1
     
-    set({ qubitAlpha: result === 0 ? 1 : 0, qubitBeta: result === 0 ? 0 : 1 })
+    // Wire the quantum readout to the first LED (Q0)
+    const newFlipFlops = [...flipFlops]
+    if (newFlipFlops.length > 0) {
+      newFlipFlops[0] = { ...newFlipFlops[0], q: result, qBar: 1 - result }
+    }
+
+    set({ 
+      qubitAlpha: result === 0 ? 1 : 0, 
+      qubitBeta: result === 0 ? 0 : 1,
+      flipFlops: newFlipFlops
+    })
     
     if (hardwareMode) {
       import('@/utils/serial').then(({ serialManager }) => {
@@ -702,14 +734,23 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     return result
   },
 
-  resetQubit: () => set({ 
-    qubitAlpha: 1, 
-    qubitBeta: 0, 
-    isMeasured: false, 
-    measurementResult: null,
-    isEntangled: false,
-    qubitHistory: []
-  }),
+  resetQubit: () => {
+    const { flipFlops } = get()
+    const newFlipFlops = [...flipFlops]
+    if (newFlipFlops.length > 0) {
+      newFlipFlops[0] = { ...newFlipFlops[0], q: 0, qBar: 1 }
+    }
+    
+    set({ 
+      qubitAlpha: 1, 
+      qubitBeta: 0, 
+      isMeasured: false, 
+      measurementResult: null,
+      isEntangled: false,
+      qubitHistory: [],
+      flipFlops: newFlipFlops
+    })
+  },
 
   setQuantumNoise: (noise) => set({ quantumNoise: noise }),
   

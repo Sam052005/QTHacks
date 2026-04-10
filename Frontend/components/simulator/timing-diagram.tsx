@@ -24,17 +24,21 @@ function Waveform({ label, data, color, labelColor, pixelsPerUnit, startIndex }:
     let d = `M 0 ${visibleData[0] === 1 ? 4 : height - 4}`
     
     visibleData.forEach((value, i) => {
+      const cycleIndex = startIndex + i
       const x = i * pixelsPerUnit
       const midX = i * pixelsPerUnit + pixelsPerUnit / 2
       const nextX = (i + 1) * pixelsPerUnit
       
       if (label === 'CLK') {
-        // Synthesize a square wave for each clock cycle
-        // Rising edge at start, falling edge at midpoint
-        d += ` L ${x} 4`
-        d += ` L ${midX} 4`
-        d += ` L ${midX} ${height - 4}`
-        d += ` L ${nextX} ${height - 4}`
+        // Synthesize pulse only for cycles > 0
+        if (cycleIndex > 0) {
+          d += ` L ${x} 4`
+          d += ` L ${midX} 4`
+          d += ` L ${midX} ${height - 4}`
+          d += ` L ${nextX} ${height - 4}`
+        } else {
+          d += ` L ${nextX} ${height - 4}`
+        }
       } else {
         const y = value === 1 ? 4 : height - 4
         const prevY = i > 0 ? (visibleData[i - 1] === 1 ? 4 : height - 4) : y
@@ -107,19 +111,32 @@ function Waveform({ label, data, color, labelColor, pixelsPerUnit, startIndex }:
 }
 
 export function TimingDiagram() {
-  const { timingData, flipFlops, currentCycle, simulationCycles, numFlipFlops } = useSimulationStore()
+  const { timingData, flipFlops, currentCycle, simulationCycles, numFlipFlops, inputBitSequence } = useSimulationStore()
   const [pixelsPerUnit, setPixelsPerUnit] = useState(40)
   const [startIndex, setStartIndex] = useState(0)
 
-  const clockData = useMemo(() => 
-    timingData.map(t => t.clock), 
-    [timingData]
-  )
+  // Actual recorded data plus future projections
+  const clockData = useMemo(() => {
+    const recorded = timingData.map(t => t.clock)
+    const result = [...recorded]
+    for (let i = result.length; i <= simulationCycles; i++) {
+      result.push(0)
+    }
+    return result
+  }, [timingData, simulationCycles])
 
-  const inputData = useMemo(() => 
-    timingData.map(t => t.input), 
-    [timingData]
-  )
+  const inputData = useMemo(() => {
+    const recorded = timingData.map(t => t.input)
+    const sequence = inputBitSequence.split('').map(Number)
+    const result = [...recorded]
+    
+    for (let i = result.length; i <= simulationCycles; i++) {
+      // seq bit 0 is for cycle 1, so seq bit i-1
+      const bit = sequence[i - 1] ?? 0
+      result.push(bit)
+    }
+    return result
+  }, [timingData, inputBitSequence, simulationCycles])
 
   const outputColors = [
     '#22c55e', // green
@@ -238,30 +255,19 @@ export function TimingDiagram() {
           </div>
 
           {/* Clock signal */}
-          {timingData.length > 0 ? (
-            <Waveform
-              label="CLK"
-              data={clockData}
-              color="#f97316"
-              labelColor="text-orange-400"
-              pixelsPerUnit={pixelsPerUnit}
-              startIndex={startIndex}
-            />
-          ) : (
-            <Waveform
-              label="CLK"
-              data={Array.from({ length: 8 }, (_, i) => i % 2)}
-              color="#f97316"
-              labelColor="text-orange-400"
-              pixelsPerUnit={pixelsPerUnit}
-              startIndex={startIndex}
-            />
-          )}
+          <Waveform
+            label="CLK"
+            data={clockData}
+            color="#f97316"
+            labelColor="text-orange-400"
+            pixelsPerUnit={pixelsPerUnit}
+            startIndex={startIndex}
+          />
 
           {/* Input signal */}
           <Waveform
             label="INPUT"
-            data={inputData.length > 0 ? inputData : [0, 1, 0, 1, 1, 0, 1, 0]}
+            data={inputData}
             color="#fbbf24"
             labelColor="text-yellow-400"
             pixelsPerUnit={pixelsPerUnit}
@@ -269,13 +275,20 @@ export function TimingDiagram() {
           />
 
           {/* Flip-flop outputs */}
-          {(flipFlops.length > 0 ? flipFlops : Array(numFlipFlops).fill(0)).map((_, i) => {
-            const outputData = timingData.map(t => (t.outputs && t.outputs[i] !== undefined) ? t.outputs[i] : 0)
+          {Array.from({ length: numFlipFlops }).map((_, i) => {
+            const outputData = timingData.map(t => (t.outputs && t.outputs[i] !== undefined) ? t.outputs[i] : (timingData[0]?.outputs?.[i] ?? 0))
+            // Project future as last known state
+            const lastKnown = outputData[outputData.length - 1] ?? 0
+            const fullOutputData = [...outputData]
+            for (let j = fullOutputData.length; j <= simulationCycles; j++) {
+              fullOutputData.push(lastKnown)
+            }
+            
             return (
               <Waveform
                 key={i}
-                label={`Q${i + 1}`}
-                data={outputData.length > 0 ? outputData : Array(8).fill(0)}
+                label={`Q${i}`}
+                data={fullOutputData}
                 color={outputColors[i % outputColors.length]}
                 labelColor={outputLabelColors[i % outputLabelColors.length]}
                 pixelsPerUnit={pixelsPerUnit}
